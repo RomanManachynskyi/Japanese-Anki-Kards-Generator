@@ -1,0 +1,34 @@
+{
+  "vocabulary": [
+    {
+      "reading": "ビジネス",
+      "kanji": null,
+      "translation": "business",
+      "sentence_kana": "",
+      "sentence_english": "",
+      "audio_count": 2
+    },
+    {
+      "reading": "れきし",
+      "kanji": {
+        "kanji": "歴史",
+        "furigana": "歴[れき]史[し]"
+      },
+      "translation": "history",
+      "sentence_kana": "",
+      "sentence_english": "",
+      "audio_count": null
+    },
+    {
+      "reading": "ゆうびんきょく",
+      "kanji": {
+        "kanji": "郵便局",
+        "furigana": "郵便[ゆうびん]局[きょく]"
+      },
+      "translation": "post office",
+      "sentence_kana": "郵便局に行きます",
+      "sentence_english": "I will go to the post office",
+      "audio_count": 3
+    }
+  ]
+}
