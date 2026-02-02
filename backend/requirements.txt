@@ -1,0 +1,7 @@
+elevenlabs
+pykakasi
+fugashi[unidic]
+genanki
+fastapi
+uvicorn[standard]
+python-multipart
