@@ -117,7 +117,8 @@ class VocabularyProcessor:
             )
         
         generation_mode = word_data.get("generation_mode", "both")
-        
+        notes = word_data.get("notes", "") or ""
+
         item = {
             "kanji": kanji,
             "reading_hiragana": reading_hiragana,
@@ -128,7 +129,8 @@ class VocabularyProcessor:
             "sentence_english": sentence_english,
             "sentence_image": sentence_image,
             "sentence_audio_paths": sentence_audio_files,
-            "generation_mode": generation_mode
+            "generation_mode": generation_mode,
+            "notes": notes,
         }
         
         # Build and attach Anki note

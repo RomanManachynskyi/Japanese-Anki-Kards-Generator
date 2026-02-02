@@ -1,0 +1,222 @@
+<!--
+  ANKI CARD - BACK SIDE (English → Japanese)
+  Reading pill only when no kanji (no Word-Furigana). Example/Visual only when present.
+-->
+<div class="card back">
+  {{#Notes}}
+  <button type="button" class="notes-toggle" onclick="var b=document.getElementById('notesBoxEnJp'); var o=document.getElementById('notesOverlayEnJp'); var v=b.style.display==='block'; b.style.display=v?'none':'block'; o.style.display=v?'none':'block';" title="Toggle notes">Notes</button>
+  <div id="notesOverlayEnJp" class="notes-overlay" style="display:none;" onclick="document.getElementById('notesBoxEnJp').style.display='none'; this.style.display='none';"></div>
+  <div id="notesBoxEnJp" class="notes-box" style="display:none;">{{Notes}}</div>
+  {{/Notes}}
+  <div class="card-container">
+    <section class="word-section">
+      <div class="furigana-word">{{#Word-Furigana}}{{furigana:Word-Furigana}}{{/Word-Furigana}}{{^Word-Furigana}}{{Vocabulary-Kana}}{{/Word-Furigana}}</div>
+      <div class="audio-section word-audio">
+        <div class="audio-btn">{{Vocabulary-Audio}}</div>
+      </div>
+    </section>
+    <div class="divider"></div>
+    <section class="translation-section">
+      <span class="section-label">Translation</span>
+      <p class="translation-text">{{Vocabulary-Kanji}}</p>
+    </section>
+    {{#Has-Example}}
+    <div class="divider"></div>
+    <section class="sentence-section">
+      <span class="section-label">Example</span>
+      {{#Sentence-Kana}}
+      <div class="sentence-jp"><p class="sentence-text jp">{{Sentence-Kana}}</p></div>
+      {{/Sentence-Kana}}
+      {{#Sentence-English}}
+      <div class="sentence-en"><p class="sentence-text en">{{Sentence-English}}</p></div>
+      {{/Sentence-English}}
+      {{#Sentence-Audio}}
+      <div class="audio-section sentence-audio">
+        <div class="audio-btn secondary">{{Sentence-Audio}}</div>
+      </div>
+      {{/Sentence-Audio}}
+    </section>
+    {{/Has-Example}}
+    {{#Word-Image}}
+    <div class="divider"></div>
+    <section class="image-section">
+      <span class="section-label">Visual</span>
+      <div class="image-container">{{Word-Image}}</div>
+    </section>
+    {{/Word-Image}}
+  </div>
+</div>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; min-height: 100%; margin: 0; padding: 0; }
+.card {
+  font-family: "Hiragino Kaku Gothic Pro", "Meiryo", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding: 2rem;
+  margin: 0;
+}
+.card.back {
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+  color: #1a1a1a;
+  padding-top: 3rem;
+}
+.notes-toggle {
+  position: absolute; top: 0.75rem; right: 1rem; z-index: 3;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem; font-weight: 500;
+  background: #e5e7eb; color: #374151;
+  border: 1px solid #d1d5db; border-radius: 0.375rem;
+  cursor: pointer; font-family: inherit;
+}
+.notes-toggle:hover { background: #d1d5db; }
+.notes-overlay {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25); z-index: 10; cursor: pointer;
+}
+.notes-box {
+  position: fixed; top: 2.5rem; right: 1rem;
+  width: 90%; max-width: 360px; max-height: 70vh;
+  padding: 0.75rem; overflow: auto;
+  background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 0.5rem;
+  font-size: 0.875rem; color: #374151; white-space: pre-wrap; z-index: 11;
+}
+.nightMode .notes-toggle { background: #374151; color: #e5e7eb; border-color: #4b5563; }
+.nightMode .notes-toggle:hover { background: #4b5563; }
+.nightMode .notes-box { background: #2d2d2d; border-color: #374151; color: #e5e7eb; }
+.card-container { margin: 0 auto; width: 100%; max-width: 100%; }
+section { margin-bottom: 1.5rem; }
+.section-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #9ca3af;
+  margin-bottom: 0.75rem;
+}
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+  margin: 1.5rem 0;
+}
+.word-section { text-align: center; padding: 1rem 0; }
+.furigana-word {
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: 600;
+  color: #0f0f0f;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+ruby { display: inline-flex; flex-direction: column-reverse; text-align: center; vertical-align: bottom; }
+ruby rt { font-size: 0.4em; font-weight: 500; color: #6b7280; line-height: 1.2; padding-bottom: 0.2em; }
+.kana-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f0f0f0;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  margin-bottom: 1rem;
+}
+.kana-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+.kana-text { font-size: 1.25rem; font-weight: 500; color: #374151; }
+.audio-section { margin-top: 1rem; }
+.audio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #0f0f0f;
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.audio-btn:hover { background: #374151; transform: translateY(-1px); }
+.audio-btn:active { transform: translateY(0); }
+.audio-btn.secondary {
+  background: transparent;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+.audio-btn.secondary:hover { background: #f3f4f6; border-color: #9ca3af; }
+.translation-section { text-align: center; }
+.translation-text { font-size: 1.5rem; font-weight: 500; color: #1f2937; line-height: 1.5; }
+.sentence-section { text-align: center; }
+.sentence-jp { margin-bottom: 0.75rem; }
+.sentence-text { line-height: 1.6; }
+.sentence-text.jp { font-size: 1.25rem; color: #1f2937; font-weight: 500; }
+.sentence-text.en { font-size: 1rem; color: #6b7280; font-style: italic; }
+.sentence-en { margin-bottom: 1rem; }
+.image-section { text-align: center; }
+.image-container {
+  border-radius: 1rem;
+  overflow: visible;
+  background: #e5e7eb;
+  max-width: 100%;
+  display: inline-block;
+}
+.image-container img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 70vh;
+  display: block;
+  object-fit: contain;
+}
+.nightMode .card.back {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  color: #f5f5f5;
+}
+.nightMode .furigana-word { color: #f5f5f5; }
+.nightMode ruby rt { color: #9ca3af; }
+.nightMode .kana-reading { background: #2d2d2d; }
+.nightMode .kana-text { color: #e5e7eb; }
+.nightMode .divider { background: linear-gradient(90deg, transparent, #374151, transparent); }
+.nightMode .section-label { color: #6b7280; }
+.nightMode .translation-text { color: #f3f4f6; }
+.nightMode .sentence-text.jp { color: #f3f4f6; }
+.nightMode .sentence-text.en { color: #9ca3af; }
+.nightMode .audio-btn { background: #ffffff; color: #0f0f0f; }
+.nightMode .audio-btn:hover { background: #e5e7eb; }
+.nightMode .audio-btn.secondary {
+  background: transparent;
+  color: #d1d5db;
+  border-color: #4b5563;
+}
+.nightMode .audio-btn.secondary:hover { background: #2d2d2d; border-color: #6b7280; }
+.nightMode .image-container { background: #2d2d2d; }
+@media (max-width: 480px) {
+  .card { padding: 1.25rem; }
+  .furigana-word { font-size: clamp(1.75rem, 10vw, 2.5rem); }
+  .translation-text { font-size: 1.25rem; }
+  .sentence-text.jp { font-size: 1.1rem; }
+  .sentence-text.en { font-size: 0.9rem; }
+  .audio-btn { padding: 0.6rem 1.25rem; font-size: 0.8rem; }
+}
+.card-container { animation: slideUp 0.2s ease-out; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+section { animation: fadeIn 0.25s ease-out; animation-fill-mode: both; }
+.word-section { animation-delay: 0.05s; }
+.translation-section { animation-delay: 0.1s; }
+.sentence-section { animation-delay: 0.15s; }
+.image-section { animation-delay: 0.2s; }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>

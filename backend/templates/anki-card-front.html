@@ -1,0 +1,61 @@
+<!--
+  ANKI CARD - FRONT SIDE
+  Fields: {{Vocabulary-Kanji}} (JP card) or {{Vocabulary-English}} (EN card)
+-->
+<div class="card front">
+  <div class="card-container">
+    <div class="word-display">
+      <span class="main-word">{{Vocabulary-Kanji}}</span>
+    </div>
+  </div>
+</div>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; min-height: 100%; margin: 0; padding: 0; }
+.card {
+  font-family: "Hiragino Kaku Gothic Pro", "Meiryo", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  margin: 0;
+}
+.card.front {
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+  color: #1a1a1a;
+}
+.card-container { text-align: center; width: 100%; max-width: 100%; }
+.word-display { margin-bottom: 0; }
+.main-word {
+  font-size: clamp(3rem, 12vw, 6rem);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  display: block;
+  color: #0f0f0f;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.nightMode .card.front {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  color: #f5f5f5;
+}
+.nightMode .main-word {
+  color: #f5f5f5;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 480px) {
+  .card { padding: 1.5rem; }
+  .main-word { font-size: clamp(2.5rem, 15vw, 4rem); }
+}
+.main-word { animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

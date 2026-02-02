@@ -35,7 +35,13 @@ Anki-Kards-Info-Generator/
 pip install -r requirements.txt
 ```
 
-2. Configure your ElevenLabs API key in `config.py`:
+2. **Required:** Download the UniDic dictionary (needed for Japanese text processing; run once per environment):
+```bash
+python -m unidic download
+```
+Without this, the app will fail with a MeCab/unidic error (e.g. "no such file or directory: ... unidic\\dicdir\\mecabrc"). Alternatively, use `fugashi[unidic-lite]` in `requirements.txt` for a self-contained install (no separate download).
+
+3. Configure your ElevenLabs API key in `config.py`:
 ```python
 API_KEY = "your_elevenlabs_api_key_here"
 VOICE_ID = "your_voice_id_here"
@@ -63,24 +69,38 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Running the Application
 
-### Option 1: Web UI (Recommended)
+### Option 1: Start scripts (recommended)
 
-1. Start the backend API server:
-```bash
-python api.py
-```
-The API will be available at `http://localhost:8000`
+Use the start scripts to run **both** the backend and frontend. They install dependencies if needed, then open two windows (backend + frontend) and open the app in your browser.
 
-2. In a separate terminal, start the frontend:
+- **Windows (Command Prompt):** double-click `start.bat` or run:
+  ```cmd
+  start.bat
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  .\start.ps1
+  ```
+
+- Backend API: `http://localhost:8000`
+- Frontend UI: `http://localhost:3000`  
+- Close the two terminal windows to stop the servers.
+
+### Option 2: Single terminal (npm)
+
+From the project root, run both in one terminal (requires Node and Python in PATH):
+
 ```bash
-cd frontend
-pnpm dev
-# or
+npm install
 npm run dev
 ```
-The UI will be available at `http://localhost:3000`
 
-### Option 2: CLI Mode
+### Option 3: Manual (separate terminals)
+
+1. Backend: `cd backend` then `python api.py` → `http://localhost:8000`
+2. Frontend: `cd frontend` then `npm run dev` → `http://localhost:3000`
+
+### Option 4: CLI Mode
 
 1. Edit `input.json` with your vocabulary data:
 ```json

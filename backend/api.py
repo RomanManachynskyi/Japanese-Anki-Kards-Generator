@@ -43,6 +43,7 @@ class CardInput(BaseModel):
     sentence_image: Optional[str] = ""  # Base64 data URL
     audio_count: Optional[int] = None  # None means no audio
     generation_mode: str = "both"  # "both", "jp_en", or "en_jp"
+    notes: Optional[str] = ""
 
 
 class GenerateRequest(BaseModel):
@@ -59,6 +60,7 @@ class GenerateResponse(BaseModel):
     success: bool
     message: str
     apkg_path: Optional[str] = None
+    run_id: Optional[str] = None  # results dir name, e.g. 2025-02-02_14-30-00
     total_cards: int = 0
     total_audio_files: int = 0
 
@@ -129,6 +131,7 @@ async def generate_cards(request: GenerateRequest):
                 "sentence_image": card.sentence_image or "",
                 "audio_count": card.audio_count,
                 "generation_mode": card.generation_mode or "both",
+                "notes": card.notes or "",
             }
             vocab_list.append(vocab_item)
 
@@ -160,10 +163,12 @@ async def generate_cards(request: GenerateRequest):
         total_audio = sum(len(r['audio_paths']) for r in result)
         total_sentence_audio = sum(len(r.get('sentence_audio_paths', [])) for r in result)
 
+        run_id = results_dir.name  # e.g. 2025-02-02_14-30-00
         return GenerateResponse(
             success=True,
             message=f"Successfully generated {len(result)} cards",
             apkg_path=apkg_path,
+            run_id=run_id,
             total_cards=len(result),
             total_audio_files=total_audio + total_sentence_audio,
         )
@@ -173,24 +178,39 @@ async def generate_cards(request: GenerateRequest):
 
 
 @app.get("/api/download/{filename}")
-async def download_file(filename: str):
-    """Download the generated .apkg file"""
-    # Search for the file in results directory
-    # Resolve relative path from backend/ directory
+async def download_file(filename: str, run_id: Optional[str] = None):
+    """Download the .apkg file. If run_id is given, use that run's dir; else use the newest."""
     results_path = Path(__file__).parent / config.RESULTS_DIR
     results_path = results_path.resolve()
-    
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    if run_id:
+        # Serve from the specific run (avoids ever serving an old file)
+        dir_path = results_path / run_id
+        file_path = dir_path / filename
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        return FileResponse(
+            path=str(file_path),
+            filename=filename,
+            media_type="application/octet-stream",
+        )
+    # Fallback: newest run by mtime
+    candidates = []
     for dir_path in results_path.iterdir():
         if dir_path.is_dir():
-            file_path = dir_path / filename
-            if file_path.exists():
-                return FileResponse(
-                    path=str(file_path),
-                    filename=filename,
-                    media_type="application/octet-stream"
-                )
-    
-    raise HTTPException(status_code=404, detail="File not found")
+            fp = dir_path / filename
+            if fp.exists():
+                candidates.append((dir_path, fp))
+    if not candidates:
+        raise HTTPException(status_code=404, detail="File not found")
+    candidates.sort(key=lambda p: p[0].stat().st_mtime)
+    file_path = candidates[-1][1]
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type="application/octet-stream",
+    )
 
 
 @app.get("/api/health")

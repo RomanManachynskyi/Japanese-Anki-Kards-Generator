@@ -50,7 +50,7 @@ REM Wait a moment for backend to start
 timeout /t 3 /nobreak >nul
 
 echo [4/4] Starting Frontend dev server...
-start "Anki Frontend" cmd /k "cd /d "%SCRIPT_DIR%frontend" && npm run dev"
+start "Anki Frontend" cmd /k "cd /d "%SCRIPT_DIR%\frontend" && npm run dev"
 
 echo.
 echo ============================================
