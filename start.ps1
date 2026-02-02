@@ -34,7 +34,7 @@ Write-Host "[2/4] Checking frontend dependencies..." -ForegroundColor Yellow
 if (-not (Test-Path "frontend\node_modules")) {
     Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
     Set-Location frontend
-    npm install
+    npm.cmd install
     Set-Location $ScriptDir
 } else {
     Write-Host "Frontend dependencies already installed." -ForegroundColor Green
@@ -48,7 +48,7 @@ Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "cd /d `"$ScriptDir\backen
 Start-Sleep -Seconds 3
 
 Write-Host "[4/4] Starting Frontend dev server..." -ForegroundColor Yellow
-Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "cd /d `"$ScriptDir\frontend`" && npm run dev" -WindowStyle Normal
+Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "cd /d `"$ScriptDir\frontend`" && npm.cmd run dev" -WindowStyle Normal
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green

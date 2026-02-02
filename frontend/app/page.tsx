@@ -57,6 +57,7 @@ export default function Home() {
     sentenceImage: "",
     audioCount: 1,
     generationMode: "both" as const,
+    notes: "",
   }
 
   useEffect(() => {
@@ -64,9 +65,10 @@ export default function Home() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        setCards(parsed)
-        if (parsed.length > 0) {
-          setActiveCardId(parsed[0].id)
+        const migrated = parsed.map((c: Card) => ({ ...c, notes: c.notes ?? "" }))
+        setCards(migrated)
+        if (migrated.length > 0) {
+          setActiveCardId(migrated[0].id)
         }
       } catch (e) {
         console.error("Failed to load saved cards:", e)
@@ -78,8 +80,8 @@ export default function Home() {
     if (savedHistory) {
       try {
         const parsedHistory = JSON.parse(savedHistory)
-        // Sort by createdAt descending (newest first)
-        const sortedHistory = parsedHistory.sort((a: Card, b: Card) => {
+        const migratedHistory = parsedHistory.map((c: Card) => ({ ...c, notes: c.notes ?? "" }))
+        const sortedHistory = migratedHistory.sort((a: Card, b: Card) => {
           const aTime = a.createdAt || 0
           const bTime = b.createdAt || 0
           return bTime - aTime
@@ -243,7 +245,11 @@ export default function Home() {
     setActiveCardId(null)
     setClearAllDialogOpen(false)
     setDeleteConfirmation("")
-    
+    // Clear saved cards so a reload doesn't bring back old cards
+    try {
+      localStorage.setItem("ankiCards", "[]")
+    } catch (_) {}
+
     const emptyCount = cards.length - nonEmptyCards.length
     if (nonEmptyCards.length > 0) {
       toast.success("All cards cleared", {
@@ -311,6 +317,7 @@ export default function Home() {
         sentence_image: card.sentenceImage || "",
         audio_count: card.audioCount > 0 ? card.audioCount : null,
         generation_mode: card.generationMode || "both",
+        notes: card.notes || "",
       }))
 
       const response = await generateCards({ cards: apiCards })
@@ -320,8 +327,8 @@ export default function Home() {
           description: `${response.total_cards} cards with ${response.total_audio_files} audio files`,
         })
 
-        // Download the file
-        const blob = await downloadApkg(response.apkg_path)
+        // Download the file from this run (run_id ensures we get the one we just generated)
+        const blob = await downloadApkg(response.apkg_path, response.run_id)
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
@@ -367,6 +374,7 @@ export default function Home() {
       ...card,
       id: Date.now().toString(),
       createdAt: Date.now(),
+      notes: card.notes ?? "",
     }
 
     setCards((prevCards) => [...prevCards, restoredCard])
@@ -398,6 +406,7 @@ export default function Home() {
       ...card,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: Date.now(),
+      notes: card.notes ?? "",
     }))
 
     setCards((prevCards) => [...prevCards, ...restoredCards])

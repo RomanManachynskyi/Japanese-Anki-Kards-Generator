@@ -20,6 +20,7 @@ interface CardCreatorProps {
     sentenceImage: string
     audioCount: number
     generationMode: CardGenerationMode
+    notes: string
   }
   setCardData: (data: any) => void
 }
@@ -118,6 +119,7 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
       sentenceImage: "",
       audioCount: 1,
       generationMode: "both",
+      notes: "",
     })
   }
 
@@ -265,8 +267,23 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
               onChange={(value) => handleInputChange("sentenceImage", value)}
             />
             <p className="text-xs text-muted-foreground">
-              Image will be used in both Sentence-Image and Sentence-English fields. Press Ctrl+V to paste.
+              Image will be used in the Word Image field. Press Ctrl+V to paste.
             </p>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes" className="text-sm font-medium text-foreground">
+              Notes
+            </Label>
+            <Textarea
+              id="notes"
+              placeholder="Optional notes (shown on the card back via Notes button)"
+              value={cardData.notes ?? ""}
+              onChange={(e) => handleInputChange("notes", e.target.value)}
+              className="border-input bg-muted text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors"
+              rows={3}
+            />
           </div>
         </CardContent>
       </Card>

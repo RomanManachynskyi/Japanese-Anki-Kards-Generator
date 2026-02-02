@@ -11,5 +11,6 @@ export interface Card {
   sentenceImage: string // Base64 image data URL
   audioCount: number
   generationMode: CardGenerationMode // Which card variants to generate
+  notes: string
   createdAt: number
 }
