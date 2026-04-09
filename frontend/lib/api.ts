@@ -20,6 +20,7 @@ export interface CardInput {
   sentence_image: string // Base64 data URL
   audio_count: number | null
   generation_mode: CardGenerationMode
+  notes?: string
 }
 
 export interface GenerateRequest {
@@ -30,6 +31,7 @@ export interface GenerateResponse {
   success: boolean
   message: string
   apkg_path: string | null
+  run_id: string | null
   total_cards: number
   total_audio_files: number
 }
@@ -96,16 +98,19 @@ export async function generateCards(request: GenerateRequest): Promise<GenerateR
 }
 
 /**
- * Download the generated .apkg file
+ * Download the generated .apkg file. Pass runId from the generate response to get the file from that run.
  */
-export async function downloadApkg(apkgPath: string): Promise<Blob> {
+export async function downloadApkg(apkgPath: string, runId?: string | null): Promise<Blob> {
   const filename = apkgPath.split(/[/\\]/).pop() || "vocabulary.apkg"
-  const response = await fetch(`${API_BASE_URL}/api/download/${filename}`)
-  
+  const url = runId
+    ? `${API_BASE_URL}/api/download/${filename}?run_id=${encodeURIComponent(runId)}`
+    : `${API_BASE_URL}/api/download/${filename}`
+  const response = await fetch(url)
+
   if (!response.ok) {
     throw new Error("Failed to download file")
   }
-  
+
   return response.blob()
 }
 
