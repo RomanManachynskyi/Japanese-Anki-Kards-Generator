@@ -3,31 +3,21 @@ Main entry point for Anki Vocabulary Generator
 """
 import json
 from pathlib import Path
-from services.vocabulary_processor import VocabularyProcessor
 from services.file_manager import FileManager
+from services.pipeline import RuntimeAudioConfig, run_generation_pipeline
+import config
 
 
 def validate_input(input_data):
-    """
-    Validate input JSON data.
-    
-    Args:
-        input_data: Dictionary from input JSON
-        
-    Returns:
-        list: vocab_list or None if invalid
-    """
-    vocab = input_data.get("vocabulary", [])
-    
-    if not vocab:
+    vocabulary_items = input_data.get("vocabulary", [])
+
+    if not vocabulary_items:
         print("Error: No vocabulary items found in input.json!")
         return None
     
-    # Validate each vocabulary item has valid audio_count (null or positive integer)
-    for i, word in enumerate(vocab):
+    for i, word in enumerate(vocabulary_items):
         audio_count = word.get("audio_count")
-        
-        # audio_count can be null (no audio) or a positive integer
+
         if audio_count is not None:
             try:
                 audio_count = int(audio_count)
@@ -38,12 +28,10 @@ def validate_input(input_data):
                 print(f"Error: 'audio_count' must be a valid integer (or null) for word {i+1}!")
                 return None
     
-    return vocab
+    return vocabulary_items
 
 
 def main():
-    """Main execution function."""
-    # Load input from JSON file
     input_file = Path("input.json")
     if not input_file.exists():
         print(f"Error: {input_file} not found!")
@@ -52,44 +40,33 @@ def main():
     with open(input_file, "r", encoding="utf-8") as f:
         input_data = json.load(f)
     
-    # Validate input
-    vocab = validate_input(input_data)
-    if vocab is None:
+    vocabulary_items = validate_input(input_data)
+    if vocabulary_items is None:
         exit(1)
     
-    print(f"Loaded {len(vocab)} vocabulary items from input.json")
+    print(f"Loaded {len(vocabulary_items)} vocabulary items from input.json")
     
-    # Count words with audio enabled (audio_count is not null)
-    words_with_audio = sum(1 for w in vocab if w.get("audio_count") is not None)
-    print(f"Words with audio generation enabled: {words_with_audio}/{len(vocab)}")
+    words_with_audio = sum(1 for word in vocabulary_items if word.get("audio_count") is not None)
+    print(f"Words with audio generation enabled: {words_with_audio}/{len(vocabulary_items)}")
     
-    # Initialize services
     file_manager = FileManager()
-    vocabulary_processor = VocabularyProcessor()
-    
-    # Create results directory
-    results_dir = file_manager.create_results_directory()
-    print(f"Created results directory: {results_dir}")
-    
-    # Create Audio subdirectory (always create it, individual words control audio generation)
-    audio_dir = results_dir / "Audio"
-    audio_dir.mkdir(exist_ok=True)
-    
-    # Generate vocabulary items
+
     print("Generating vocabulary items...")
-    
-    result = vocabulary_processor.process_vocabulary(
-        vocab,
-        str(audio_dir)
+
+    pipeline_result = run_generation_pipeline(
+        vocabulary_items=vocabulary_items,
+        runtime_audio_config=RuntimeAudioConfig(
+            api_key=config.API_KEY,
+            voice_id=config.VOICE_ID,
+            model_id=config.MODEL_ID,
+        ),
+        file_manager=file_manager,
+        save_outputs=True,
+        original_input=input_data,
     )
-    
-    # Save all results
-    print("Saving results...")
-    saved_files = file_manager.save_all_results(results_dir, input_data, result)
-    
-    # Count total audio files generated
-    total_audio = sum(len(r['audio_paths']) for r in result)
-    total_sentence_audio = sum(len(r.get('sentence_audio_paths', [])) for r in result)
+    results_dir = pipeline_result.results_dir
+    saved_files = pipeline_result.saved_files or {}
+    audio_dir = results_dir / "Audio"
     
     print("\n" + "=" * 60)
     print("GENERATION COMPLETE!")
@@ -100,9 +77,9 @@ def main():
     print(f"  - {saved_files['summary_path']}")
     print(f"  - {saved_files['apkg_path']} (Anki package - ready to import!)")
     print(f"  - Audio files in: {audio_dir}")
-    print(f"\nTotal words: {len(result)}")
-    print(f"Total vocabulary audio files: {total_audio}")
-    print(f"Total sentence audio files: {total_sentence_audio}")
+    print(f"\nTotal words: {len(pipeline_result.processed_items)}")
+    print(f"Total vocabulary audio files: {pipeline_result.total_word_audio_files}")
+    print(f"Total sentence audio files: {pipeline_result.total_sentence_audio_files}")
     print("=" * 60)
 
 

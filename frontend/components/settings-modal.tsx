@@ -15,6 +15,28 @@ interface SettingsModalProps {
   onApiKeyStatusChange?: (isSet: boolean) => void
 }
 
+const MASKED_API_KEY_PREFIX = "••••"
+const MASKED_API_KEY_PLACEHOLDER = "••••••••••••••••"
+
+type StoredAudioConfig = {
+  apiKey: string
+  voiceId: string
+  modelId: string
+}
+
+export const parseStoredAudioConfig = (rawConfig: string): StoredAudioConfig | null => {
+  try {
+    const parsed = JSON.parse(rawConfig)
+    return {
+      apiKey: parsed.apiKey || "",
+      voiceId: parsed.voiceId || "",
+      modelId: parsed.modelId || "",
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("")
   const [voiceId, setVoiceId] = useState("")
@@ -23,7 +45,6 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
   const [isSaving, setIsSaving] = useState(false)
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "offline">("checking")
 
-  // Load config from backend on mount
   useEffect(() => {
     if (open) {
       loadConfig()
@@ -47,34 +68,35 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
       const config = await getConfig()
       setVoiceId(config.voice_id || "")
       setModelId(config.model_id || "")
-      // API key is not returned for security, only whether it's set
       if (config.api_key_set) {
-        setApiKey("••••••••••••••••") // Show placeholder
+        setApiKey(MASKED_API_KEY_PLACEHOLDER)
       }
       onApiKeyStatusChange?.(config.api_key_set)
     } catch (error) {
       console.error("Failed to load config:", error)
-      // Load from localStorage as fallback
       const saved = localStorage.getItem("audioConfig")
       if (saved) {
-        const config = JSON.parse(saved)
-        setApiKey(config.apiKey || "")
-        setVoiceId(config.voiceId || "")
-        setModelId(config.modelId || "")
-        onApiKeyStatusChange?.(Boolean(config.apiKey))
+        const parsedConfig = parseStoredAudioConfig(saved)
+        if (parsedConfig) {
+          setApiKey(parsedConfig.apiKey)
+          setVoiceId(parsedConfig.voiceId)
+          setModelId(parsedConfig.modelId)
+          onApiKeyStatusChange?.(Boolean(parsedConfig.apiKey))
+        } else {
+          onApiKeyStatusChange?.(false)
+        }
       }
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Save config to backend
   const saveConfig = async () => {
     setIsSaving(true)
     try {
-      // Only send API key if it's been changed (not the placeholder)
-      const apiKeyToSend = apiKey.startsWith("••••") ? "" : apiKey
-      const isApiKeySet = apiKey.startsWith("••••") || apiKeyToSend.trim().length > 0
+      const apiKeyIsMasked = apiKey.startsWith(MASKED_API_KEY_PREFIX)
+      const apiKeyToSend = apiKeyIsMasked ? "" : apiKey
+      const isApiKeySet = apiKeyIsMasked || apiKeyToSend.trim().length > 0
       
       await updateConfig({
         api_key: apiKeyToSend,
@@ -82,9 +104,8 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
         model_id: modelId,
       })
       
-      // Also save to localStorage as backup
       localStorage.setItem("audioConfig", JSON.stringify({
-        apiKey: apiKeyToSend,
+        apiKey: apiKeyIsMasked ? MASKED_API_KEY_PLACEHOLDER : apiKeyToSend,
         voiceId,
         modelId,
       }))
@@ -112,7 +133,6 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
           <DialogDescription>Configure your ElevenLabs API credentials for audio generation</DialogDescription>
         </DialogHeader>
 
-        {/* Backend Status */}
         <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
           {backendStatus === "checking" && (
             <>
@@ -140,7 +160,6 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
           </div>
         ) : (
           <div className="space-y-6">
-            {/* API Key */}
             <div className="space-y-2">
               <Label htmlFor="apiKey" className="text-sm font-medium">
                 ElevenLabs API Key
@@ -166,7 +185,6 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
               </p>
             </div>
 
-            {/* Voice ID */}
             <div className="space-y-2">
               <Label htmlFor="voiceId" className="text-sm font-medium">
                 Voice ID
@@ -183,7 +201,6 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
               </p>
             </div>
 
-            {/* Model ID */}
             <div className="space-y-2">
               <Label htmlFor="modelId" className="text-sm font-medium">
                 Model ID
@@ -200,7 +217,6 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
               </p>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-2 justify-end pt-4">
               <Button 
                 variant="outline" 
