@@ -133,46 +133,20 @@ def _extract_ordered_fields(anki_note_data):
 
 
 def build_anki_note(word):
-    """
-    Build Anki note structure for Japanese-Anki-Kard note type.
-    
-    Args:
-        word: Dictionary containing:
-            - kanji (str or None) - the kanji string
-            - reading_hiragana (str)
-            - reading_furigana (str) - e.g., 郵便[ゆうびん]局[きょく]
-            - translation (str)
-            - audio_paths (list of str)
-            - sentence_kana (str, optional)
-            - sentence_english (str, optional)
-            - sentence_audio_paths (list of str, optional)
-    
-    Returns:
-        dict: Anki note structure with fields and audio array
-    """
-    # Vocabulary-Kanji = kanji if available, otherwise reading_hiragana
     vocabulary_kanji = word["kanji"] if word["kanji"] else word["reading_hiragana"]
-    
-    # Vocabulary-Kana = reading_hiragana (the reading in hiragana)
     vocabulary_kana = word["reading_hiragana"]
-    
-    # Vocabulary-English = translation
     vocabulary_english = word["translation"]
-    
-    # Word-Furigana = word-only furigana for back card (e.g. 郵便[ゆうびん]局[きょく])
     reading_furigana = word.get("reading_furigana", "") if word.get("kanji") else ""
     
     audio_field, audio_array = _build_audio_field(word.get("audio_paths", []))
     
-    # Sentence fields
     sentence_kana = word.get("sentence_kana", "") or ""
     sentence_english = word.get("sentence_english", "") or ""
-    word_image_data = word.get("sentence_image", "") or ""  # API still sends sentence_image; we store as Word-Image
+    word_image_data = word.get("sentence_image", "") or ""
     
     sentence_audio_field, sentence_audio_array = _build_audio_field(word.get("sentence_audio_paths", []))
     audio_array.extend(sentence_audio_array)
     
-    # Word Image: convert base64 to file if provided
     word_image_field, image_array = _decode_word_image(word_image_data)
 
     word_furigana = reading_furigana
@@ -200,18 +174,6 @@ def build_anki_note(word):
 
 
 def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
-    """
-    Create an Anki package file (.apkg) from the generated vocabulary items.
-    
-    Args:
-        results_dir: Directory where results are saved
-        results: List of processed vocabulary items with anki_note data
-        deck_name: Name of the Anki deck to create
-    
-    Returns:
-        str: Path to the created .apkg file
-    """
-    # Two separate note types with templates in backend/templates/
     note_type_id = config.NOTE_TYPE_ID
 
     def _strip_comments(html):
@@ -225,7 +187,6 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
     _afmt_jp_en = _strip_comments(_back_jp_en_html)
     _afmt_en_jp = _strip_comments(_back_en_jp_html)
 
-    # Note type 1: Japanese → English (front: Japanese word, back: translation + example etc.)
     note_model_jp_en = _build_note_model(
         note_type_id,
         "Japanese-Anki-Kard (Japanese→English)",
@@ -234,7 +195,6 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
         _afmt_jp_en,
     )
 
-    # Note type 2: English → Japanese (front: English word, back: Japanese + example etc.)
     note_model_en_jp = _build_note_model(
         note_type_id + 1,
         "Japanese-Anki-Kard (English→Japanese)",
@@ -243,12 +203,9 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
         _afmt_en_jp,
     )
     
-    # Create deck
     deck_id = int(datetime.now().timestamp())
     deck = genanki.Deck(deck_id, deck_name)
-    
-    # Add notes and audio files
-    # Create TWO separate notes for each vocabulary item - completely independent
+
     media_files = []
     notes_added = 0
     for item in results:
@@ -258,21 +215,16 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
         
         fields = _extract_ordered_fields(anki_note_data)
         
-        # Get generation_mode to determine which cards to create
         generation_mode = item.get("generation_mode", DEFAULT_GENERATION_MODE)
-        
-        # Check if word has kanji (if no kanji, it's pure hiragana/katakana)
+
         has_kanji = item.get("kanji") and item.get("kanji").strip()
-        
-        # Create Japanese → English note if Vocabulary-Kanji field is not empty
+
         should_create_jp_en = (
             fields["Vocabulary-Kanji"].strip()
             and (generation_mode == DEFAULT_GENERATION_MODE or generation_mode == JP_EN_GENERATION_MODE)
         )
         
         if should_create_jp_en:
-            # For Japanese → English cards: if word is pure hiragana/katakana (no kanji),
-            # set Vocabulary-Kana to empty
             note_jp_en = genanki.Note(
                 model=note_model_jp_en,
                 fields=_build_jp_en_note_fields(fields, has_kanji),
@@ -280,8 +232,6 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
             deck.add_note(note_jp_en)
             notes_added += 1
         
-        # Create English → Japanese note if English translation exists
-        # This is independent of the Japanese note - can exist even without kanji
         should_create_en_jp = (
             fields["Vocabulary-English"].strip()
             and (generation_mode == DEFAULT_GENERATION_MODE or generation_mode == EN_JP_GENERATION_MODE)
@@ -295,22 +245,15 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
             deck.add_note(note_en_jp)
             notes_added += 1
         
-        # Collect audio files for package
         _collect_audio_media(anki_note_data, media_files)
         _collect_image_media(results_dir, anki_note_data, media_files)
-    
-    # Ensure deck has notes before creating package
+
     if notes_added == 0:
         raise ValueError("No notes were added to the deck. Cannot create empty Anki package.")
-    
-    # Create package with deck and media files
-    # genanki automatically includes models used by notes in the deck
-    # But we explicitly include models to ensure they're in the package
+
     package = genanki.Package(deck)
-    package.media_files = list(set(media_files))  # Remove duplicates
-    # Models are automatically included when notes using them are added to the deck
-    
-    # Save package
+    package.media_files = list(set(media_files))
+
     apkg_path = results_dir / "vocabulary.apkg"
     package.write_to_file(str(apkg_path))
     

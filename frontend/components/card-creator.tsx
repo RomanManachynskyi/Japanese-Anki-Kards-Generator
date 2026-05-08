@@ -82,7 +82,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
 
   return (
     <div className="space-y-6">
-      {/* Front Side Card */}
       <Card className="border-border bg-card hover:shadow-md transition-shadow">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-foreground">
@@ -92,7 +91,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
           <CardDescription>Primary content shown on the front of the card</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Japanese Word */}
           <div className="space-y-2">
             <Label htmlFor="japaneseWord" className="text-sm font-medium text-foreground">
               Japanese Word
@@ -116,7 +114,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
             )}
           </div>
 
-          {/* Furigana Section */}
           {showFuriganaField && (
             <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4">
               <Label className="text-sm font-medium text-foreground">Furigana</Label>
@@ -142,7 +139,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
             </div>
           )}
 
-          {/* Translation */}
           <div className="space-y-2">
             <Label htmlFor="translation" className="text-sm font-medium text-foreground">
               Translation
@@ -158,7 +154,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
         </CardContent>
       </Card>
 
-      {/* Back Side Card */}
       <Card className="border-border bg-card hover:shadow-md transition-shadow">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-foreground">
@@ -168,7 +163,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
           <CardDescription>Additional information and example usage</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Example Sentence - Kana */}
           <div className="space-y-2">
             <Label htmlFor="sentenceKana" className="text-sm font-medium text-foreground">
               Example Sentence (Kana)
@@ -190,7 +184,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
             )}
           </div>
 
-          {/* Example Sentence - English */}
           <div className="space-y-2">
             <Label htmlFor="sentenceEnglish" className="text-sm font-medium text-foreground">
               Example Sentence (English)
@@ -205,7 +198,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
             />
           </div>
 
-          {/* Audio Count */}
           <div className="space-y-2">
             <Label htmlFor="audioCount" className="text-sm font-medium text-foreground">
               Audio Recordings
@@ -226,7 +218,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
             </div>
           </div>
 
-          {/* Sentence Image */}
           <div className="space-y-2">
             <ImageUpload
               id="sentenceImage"
@@ -239,7 +230,6 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
             </p>
           </div>
 
-          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes" className="text-sm font-medium text-foreground">
               Notes

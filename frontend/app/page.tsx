@@ -80,7 +80,6 @@ export default function Home() {
       }
     }
     
-    // Load history and sort by creation date (newest first)
     const savedHistory = localStorage.getItem("ankiCardsHistory")
     if (savedHistory) {
       try {
@@ -115,7 +114,6 @@ export default function Home() {
             setIsApiKeySet(Boolean(parsed.apiKey))
             return
           } catch {
-            // Ignore parse errors and fall through.
           }
         }
         setIsApiKeySet(false)
@@ -132,7 +130,6 @@ export default function Home() {
       } catch (error) {
         if (error instanceof Error && error.name === "QuotaExceededError") {
           console.error("localStorage quota exceeded. Attempting to save without images...")
-          // Try saving without images
           const cardsWithoutImages = cards.map((card) => ({
             ...card,
             sentenceImage: "",
@@ -162,7 +159,6 @@ export default function Home() {
       } catch (error) {
         if (error instanceof Error && error.name === "QuotaExceededError") {
           console.error("localStorage quota exceeded for history. Attempting to save without images...")
-          // Try saving without images
           const historyWithoutImages = cardHistory.map((card) => ({
             ...card,
             sentenceImage: "",
@@ -174,7 +170,6 @@ export default function Home() {
             })
           } catch (e) {
             console.error("Failed to save history even without images:", e)
-            // If still fails, clear old history entries
             const trimmedHistory = historyWithoutImages.slice(0, Math.floor(historyWithoutImages.length / 2))
             try {
               localStorage.setItem("ankiCardsHistory", JSON.stringify(trimmedHistory))
@@ -207,7 +202,6 @@ export default function Home() {
     const cardToDelete = cards.find((c) => c.id === id)
     if (!cardToDelete) return
 
-    // Prevent deletion if it's the last card and it's empty
     if (cards.length === 1 && isCardEmpty(cardToDelete)) {
       toast.error("Cannot delete last empty card", {
         description: "You must have at least one card. Add content to this card or create a new one.",
@@ -215,16 +209,12 @@ export default function Home() {
       return
     }
 
-    // Only add to history if card is not empty
     if (!isCardEmpty(cardToDelete)) {
-      // Add to history before deleting (prepend so newest are first)
       setCardHistory((prevHistory) => {
-        // Check if card already exists in history (avoid duplicates)
         const exists = prevHistory.some((c) => c.id === id)
         if (exists) {
           return prevHistory
         }
-        // Prepend new card to keep newest first
         return [cardToDelete, ...prevHistory]
       })
     }
@@ -235,7 +225,6 @@ export default function Home() {
       setActiveCardId(updatedCards[0]?.id || null)
     }
     
-    // Only show toast for non-empty cards
     if (!isCardEmpty(cardToDelete)) {
       toast.success("Card deleted", {
         description: "Card moved to history",
@@ -244,16 +233,13 @@ export default function Home() {
   }
 
   const handleClearAllCards = () => {
-    // Add only non-empty cards to history before clearing
     const nonEmptyCards = cards.filter((card) => !isCardEmpty(card))
     
     if (nonEmptyCards.length > 0) {
       setCardHistory((prevHistory) => {
-        // Add cards that don't already exist in history (prepend to keep newest first)
         const newCards = nonEmptyCards.filter(
           (card) => !prevHistory.some((h) => h.id === card.id)
         )
-        // Prepend new cards to keep newest first
         return [...newCards, ...prevHistory]
       })
     }
@@ -262,7 +248,6 @@ export default function Home() {
     setActiveCardId(null)
     setClearAllDialogOpen(false)
     setDeleteConfirmation("")
-    // Clear saved cards so a reload doesn't bring back old cards
     try {
       localStorage.setItem("ankiCards", "[]")
     } catch (_) {}
@@ -347,7 +332,6 @@ export default function Home() {
           description: `${response.total_cards} cards with ${response.total_audio_files} audio files`,
         })
 
-        // Download the file from this run (run_id ensures we get the one we just generated)
         const blob = await downloadApkg(response.apkg_path, response.run_id)
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
@@ -376,11 +360,9 @@ export default function Home() {
     if (isHydrated && cards.length === 0 && activeCardId === null) {
       handleNewCard()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, cards.length, activeCardId])
 
   const handleRestoreCard = (card: Card) => {
-    // Check if card already exists
     const exists = cards.some((c) => c.id === card.id)
     if (exists) {
       toast.error("Card already exists", {
@@ -389,7 +371,6 @@ export default function Home() {
       return
     }
 
-    // Generate new ID to avoid conflicts
     const restoredCard: Card = {
       ...normalizeCardFromJapaneseInput(card),
       id: createCardId(),
@@ -400,7 +381,6 @@ export default function Home() {
     setCards((prevCards) => [...prevCards, restoredCard])
     setActiveCardId(restoredCard.id)
     
-    // Remove from history
     setCardHistory((prevHistory) => prevHistory.filter((c) => c.id !== card.id))
     
     toast.success("Card restored", {
@@ -409,7 +389,6 @@ export default function Home() {
   }
 
   const handleRestoreAll = (cardsToRestore: Card[]) => {
-    // Filter out cards that already exist
     const newCards = cardsToRestore.filter(
       (card) => !cards.some((c) => c.id === card.id)
     )
@@ -421,7 +400,6 @@ export default function Home() {
       return
     }
 
-    // Generate new IDs for all restored cards
     const restoredCards: Card[] = newCards.map((card) => ({
       ...normalizeCardFromJapaneseInput(card),
       id: `${createCardId()}-${Math.random().toString(36).slice(2, 11)}`,
@@ -434,7 +412,6 @@ export default function Home() {
       setActiveCardId(restoredCards[0].id)
     }
 
-    // Remove restored cards from history
     setCardHistory((prevHistory) =>
       prevHistory.filter((c) => !cardsToRestore.some((r) => r.id === c.id))
     )
@@ -465,7 +442,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background">
       <div className="flex h-screen flex-col">
-        {/* Header */}
         <header className="border-b border-border bg-card">
           <div className="container mx-auto max-w-7xl px-3 sm:px-4 py-3 sm:py-4">
             <div className="flex items-center justify-between gap-2 sm:gap-4">
@@ -507,9 +483,7 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Content */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Desktop Sidebar */}
           {sidebarOpen && (
             <div className="w-64 hidden lg:flex flex-col border-r border-border">
               <CardListSidebar
@@ -523,7 +497,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Mobile Sidebar Sheet */}
           {isMobile && (
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetContent side="left" className="w-64 p-0 sm:w-80">
@@ -545,21 +518,16 @@ export default function Home() {
             </Sheet>
           )}
 
-          {/* Content Area */}
           <div className="flex-1 overflow-auto">
             <div className="container mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
               <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-                {/* Card Creator Form */}
                 <CardCreator cardData={cardData} setCardData={updateCardData} />
-
-                {/* Preview Area */}
                 <CardPreview cardData={cardData} setCardData={updateCardData} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Generate button footer */}
         <footer className="border-t border-border bg-card">
           <div className="container mx-auto max-w-7xl px-3 sm:px-4 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
@@ -645,7 +613,6 @@ export default function Home() {
         onDeleteFromHistory={handleDeleteFromHistory}
       />
 
-      {/* Clear All Cards Confirmation Dialog */}
       <AlertDialog
         open={clearAllDialogOpen}
         onOpenChange={(open) => {

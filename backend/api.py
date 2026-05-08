@@ -27,7 +27,6 @@ app.add_middleware(
 )
 
 
-# Request/Response Models
 class KanjiData(BaseModel):
     kanji: str
     furigana: str
@@ -39,9 +38,9 @@ class CardInput(BaseModel):
     translation: str
     sentence_kana: Optional[str] = ""
     sentence_english: Optional[str] = ""
-    sentence_image: Optional[str] = ""  # Base64 data URL
-    audio_count: Optional[int] = None  # None means no audio
-    generation_mode: str = DEFAULT_GENERATION_MODE  # "both", "jp_en", or "en_jp"
+    sentence_image: Optional[str] = ""
+    audio_count: Optional[int] = None
+    generation_mode: str = DEFAULT_GENERATION_MODE
     notes: Optional[str] = ""
 
 
@@ -59,7 +58,7 @@ class GenerateResponse(BaseModel):
     success: bool
     message: str
     apkg_path: Optional[str] = None
-    run_id: Optional[str] = None  # results dir name, e.g. 2025-02-02_14-30-00
+    run_id: Optional[str] = None
     total_cards: int = 0
     total_audio_files: int = 0
 
@@ -142,7 +141,6 @@ async def generate_cards(request: GenerateRequest):
         if not request.cards:
             raise HTTPException(status_code=400, detail="No cards provided")
 
-        # Filter out empty cards
         valid_cards = [card for card in request.cards if _is_card_valid(card)]
 
         if not valid_cards:
@@ -178,7 +176,6 @@ async def download_file(filename: str, run_id: Optional[str] = None):
     if not results_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     if run_id:
-        # Serve from the specific run (avoids ever serving an old file)
         dir_path = results_path / run_id
         file_path = dir_path / filename
         if not file_path.exists():
@@ -188,7 +185,6 @@ async def download_file(filename: str, run_id: Optional[str] = None):
             filename=filename,
             media_type="application/octet-stream",
         )
-    # Fallback: newest run by mtime
     candidates = []
     for dir_path in results_path.iterdir():
         if dir_path.is_dir():

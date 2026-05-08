@@ -201,7 +201,6 @@ export default function CardPreview({ cardData, setCardData }: CardPreviewProps)
         </CardContent>
       </Card>
 
-      {/* Card Generation Mode */}
       {setCardData && (
         <Card className="border-border bg-card hover:shadow-md transition-shadow">
           <CardHeader className="pb-4">
@@ -239,7 +238,6 @@ export default function CardPreview({ cardData, setCardData }: CardPreviewProps)
         </Card>
       )}
 
-      {/* Card Stats */}
       <Card className="border-border bg-muted/50 hover:shadow-md hover:bg-muted/70 transition-all">
         <CardContent className="pt-6">
           <div className="grid grid-cols-3 gap-4">

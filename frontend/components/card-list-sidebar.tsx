@@ -157,7 +157,6 @@ export default function CardListSidebar({
     stopDragging()
   }
 
-  // FLIP animation: smoothly animate cards into their new order positions.
   useLayoutEffect(() => {
     const currentPositions: Record<string, number> = {}
 
@@ -200,7 +199,6 @@ export default function CardListSidebar({
 
   return (
     <div className="h-full flex flex-col border-r border-border bg-muted/30 w-full">
-      {/* Header */}
       <div className="border-b border-border p-3 sm:p-4 flex-shrink-0">
         <Button onClick={onNewCard} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 transition-all" size="sm">
           <Plus className="mr-2 h-4 w-4" />
@@ -208,7 +206,6 @@ export default function CardListSidebar({
         </Button>
       </div>
 
-      {/* Cards List */}
       <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-auto w-full">
         <div className="p-3 sm:p-4 space-y-2 w-full">
           {cards.length === 0 ? (
@@ -310,7 +307,6 @@ export default function CardListSidebar({
         </div>
       </ScrollArea>
 
-      {/* Footer */}
       <div className="border-t border-border p-3 sm:p-4 flex-shrink-0">
         <p className="text-xs text-muted-foreground text-center">
           {cards.length} card{cards.length !== 1 ? "s" : ""}
