@@ -7,6 +7,8 @@ from .audio_generator import AudioGenerator
 from .anki_builder import build_anki_note
 import config
 
+DEFAULT_GENERATION_MODE = "both"
+
 
 class VocabularyProcessor:
     """Processes vocabulary items and generates required data."""
@@ -45,6 +47,21 @@ class VocabularyProcessor:
             else:
                 # Format: hiragana.mp3
                 return reading_hiragana
+
+    def _resolve_reading_hiragana(self, reading):
+        if self.text_processor.is_pure_katakana(reading):
+            return reading
+        return self.text_processor.convert_to_hiragana(reading)
+
+    @staticmethod
+    def _is_audio_enabled(audio_count):
+        return audio_count is not None and audio_count > 0
+
+    @staticmethod
+    def _extract_kanji_data(kanji_data):
+        if not kanji_data:
+            return None, ""
+        return kanji_data.get("kanji"), kanji_data.get("furigana", "")
     
     def process_word(self, word_data, audio_dir):
         """
@@ -70,21 +87,11 @@ class VocabularyProcessor:
         audio_count = word_data.get("audio_count")
         
         # Extract kanji and furigana from the kanji object
-        if kanji_data:
-            kanji = kanji_data.get("kanji")
-            reading_furigana = kanji_data.get("furigana", "")
-        else:
-            kanji = None
-            reading_furigana = ""
+        kanji, reading_furigana = self._extract_kanji_data(kanji_data)
         
         # Preserve Katakana if the reading is pure Katakana (no Kanji)
         # Otherwise, convert to hiragana for processing
-        if self.text_processor.is_pure_katakana(reading):
-            # Keep Katakana as-is
-            reading_hiragana = reading
-        else:
-            # Convert reading to clean hiragana (handles Kanji and mixed text)
-            reading_hiragana = self.text_processor.convert_to_hiragana(reading)
+        reading_hiragana = self._resolve_reading_hiragana(reading)
         
         # If furigana not provided but kanji exists, generate it automatically (fallback)
         if kanji and not reading_furigana:
@@ -96,7 +103,7 @@ class VocabularyProcessor:
         
         # Generate vocabulary audio files if audio_count is specified (not None)
         audio_files = []
-        if audio_count is not None and audio_count > 0:
+        if self._is_audio_enabled(audio_count):
             audio_file_name = self._determine_audio_filename(kanji, reading, reading_hiragana)
             audio_files = self.audio_generator.generate_audio_variants(
                 reading_hiragana,
@@ -107,7 +114,7 @@ class VocabularyProcessor:
         
         # Generate sentence audio files if sentence_kana is provided and audio_count is specified
         sentence_audio_files = []
-        if audio_count is not None and audio_count > 0 and sentence_kana:
+        if self._is_audio_enabled(audio_count) and sentence_kana:
             sentence_audio_base = self._determine_audio_filename(kanji, reading, reading_hiragana) + "_sentence"
             sentence_audio_files = self.audio_generator.generate_audio_variants(
                 sentence_kana,
@@ -116,7 +123,7 @@ class VocabularyProcessor:
                 count=audio_count
             )
         
-        generation_mode = word_data.get("generation_mode", "both")
+        generation_mode = word_data.get("generation_mode", DEFAULT_GENERATION_MODE)
         notes = word_data.get("notes", "") or ""
 
         item = {
