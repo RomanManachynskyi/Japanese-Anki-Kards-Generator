@@ -19,12 +19,14 @@ interface CardPreviewProps {
     sentenceImage: string
     audioCount: number
     generationMode: CardGenerationMode
+    notes?: string
   }
   setCardData?: (data: any) => void
 }
 
 export default function CardPreview({ cardData, setCardData }: CardPreviewProps) {
   const [isFlipped, setIsFlipped] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
 
   const handleInputChange = (field: string, value: string | number) => {
     if (setCardData) {
@@ -51,107 +53,130 @@ export default function CardPreview({ cardData, setCardData }: CardPreviewProps)
             </div>
           ) : (
             <div
-              className="relative h-96 rounded-lg border-2 border-border bg-background cursor-pointer overflow-hidden flex flex-col items-center justify-between p-8 transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
+              className="group relative mx-auto aspect-[5/7] w-full max-w-[420px] cursor-pointer overflow-hidden rounded-xl border border-[#2f2f2f] bg-gradient-to-b from-[#1a1a1a] to-[#0f0f0f] p-6 text-[#f5f5f5] shadow-sm transition-all duration-300 hover:shadow-lg"
               onClick={() => setIsFlipped(!isFlipped)}
             >
-              {/* Front Side - Shows Kanji (or Kana if no Kanji) - No Audio */}
+              {/* Front Side */}
               {!isFlipped && (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-6">
-                  {/* Large Kanji or Kana - no furigana on front */}
-                  <div className="text-center">
-                    {cardData.kanji ? (
-                      <p className="text-6xl font-bold text-foreground">{cardData.kanji}</p>
-                    ) : (
-                      <p className="text-7xl font-bold text-foreground">{cardData.reading}</p>
-                    )}
-                  </div>
+                <div className="flex h-full w-full items-center justify-center text-center">
+                  <p className="text-[clamp(2.5rem,10vw,5rem)] font-semibold leading-tight tracking-[0.05em] text-[#f5f5f5] drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+                    {cardData.kanji || cardData.reading}
+                  </p>
                 </div>
               )}
 
               {/* Back Side */}
               {isFlipped && (
-                <div className="w-full h-full flex flex-col items-center justify-between">
-                  {/* Top - kanji smaller */}
-                  <div className="text-center pt-8">
-                    {cardData.kanji && <p className="text-4xl font-bold text-foreground">{cardData.kanji}</p>}
-                  </div>
-
-                  {/* Middle - main content */}
-                  <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                    {/* Translation */}
-                    {cardData.translation && (
-                      <p className="text-2xl font-semibold text-foreground">{cardData.translation}</p>
-                    )}
-
-                    {/* Furigana */}
-                    {cardData.furigana && (
-                      <p className="text-lg text-muted-foreground [&_ruby]:text-base">
-                        {furiganaToRuby(cardData.furigana)}
-                      </p>
-                    )}
-
-                    {/* Vocabulary Audio */}
-                    {cardData.audioCount > 0 && (
-                      <div className="flex gap-2 flex-wrap justify-center">
-                        {Array.from({ length: cardData.audioCount }).map((_, i) => (
-                          <button
-                            key={i}
-                            className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-primary bg-primary/10 hover:bg-primary/20 hover:scale-110 hover:shadow-md transition-all"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                            }}
-                          >
-                            <Volume2 className="h-5 w-5 text-primary" />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Example sentence in kana */}
-                    {cardData.sentenceKana && (
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                          <p className="text-base text-muted-foreground leading-relaxed">{cardData.sentenceKana}</p>
-                          {/* Sentence Audio - separate icon if sentence exists and audio count > 0 */}
-                          {cardData.audioCount > 0 && (
-                            <button
-                              className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-primary bg-primary/10 hover:bg-primary/20 hover:scale-110 hover:shadow-md transition-all flex-shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                              }}
-                              title="Sentence audio"
-                            >
-                              <Volume2 className="h-4 w-4 text-primary" />
-                            </button>
-                          )}
+                <div className="relative h-full w-full overflow-y-auto pt-6">
+                  {cardData.notes?.trim() && (
+                    <>
+                      <button
+                        type="button"
+                        className="absolute right-0 top-0 z-20 rounded-md border border-[#4b5563] bg-[#374151] px-3 py-1 text-xs font-medium text-[#e5e7eb] transition-colors hover:bg-[#4b5563]"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowNotes((prev) => !prev)
+                        }}
+                      >
+                        Notes
+                      </button>
+                      {showNotes && (
+                        <div className="absolute inset-0 z-20 rounded-lg bg-black/25" onClick={(e) => {
+                          e.stopPropagation()
+                          setShowNotes(false)
+                        }} />
+                      )}
+                      {showNotes && (
+                        <div
+                          className="absolute right-3 top-12 z-30 max-h-[60%] w-[90%] max-w-[360px] overflow-auto rounded-lg border border-[#374151] bg-[#2d2d2d] p-3 text-sm text-[#e5e7eb] whitespace-pre-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {cardData.notes}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </>
+                  )}
 
-                    {/* Sentence Image */}
-                    {cardData.sentenceImage && (
-                      <div className="text-center">
-                        <img
-                          src={cardData.sentenceImage}
-                          alt="Sentence"
-                          className="max-w-full h-auto rounded border border-border/50"
-                          style={{ maxHeight: "200px" }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bottom - English translation (separate row) */}
-                  {cardData.sentenceEnglish && (
-                    <div className="text-center pb-8 border-t border-border/50 pt-4 w-full">
-                      <p className="text-base text-foreground leading-relaxed">{cardData.sentenceEnglish}</p>
+                  <section className="mb-6 animate-in fade-in-0 duration-200 text-center">
+                    <div className="mb-3 text-[clamp(2rem,8vw,3.5rem)] font-semibold leading-snug text-[#f5f5f5] [&_ruby_rt]:text-[0.4em] [&_ruby_rt]:font-medium [&_ruby_rt]:text-[#9ca3af]">
+                      {cardData.furigana ? furiganaToRuby(cardData.furigana) : cardData.kanji || cardData.reading}
                     </div>
+
+                    {!cardData.kanji && cardData.reading && (
+                      <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#2d2d2d] px-4 py-2">
+                        <span className="text-xs uppercase tracking-wider text-[#9ca3af]">Reading:</span>
+                        <span className="text-xl font-medium text-[#e5e7eb]">{cardData.reading}</span>
+                      </div>
+                    )}
+
+                    {cardData.audioCount > 0 && (
+                      <button
+                        className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-[#0f0f0f] transition-all hover:-translate-y-px hover:bg-[#e5e7eb]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Volume2 className="h-4 w-4" />
+                        Word Audio
+                      </button>
+                    )}
+                  </section>
+
+                  <div className="my-6 h-px bg-gradient-to-r from-transparent via-[#374151] to-transparent" />
+
+                  <section className="mb-6 animate-in fade-in-0 duration-200 text-center">
+                    <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.15em] text-[#6b7280]">
+                      Translation
+                    </span>
+                    <p className="text-2xl font-medium leading-relaxed text-[#f3f4f6]">{cardData.translation || " "}</p>
+                  </section>
+
+                  {(cardData.sentenceKana || cardData.sentenceEnglish) && (
+                    <>
+                      <div className="my-6 h-px bg-gradient-to-r from-transparent via-[#374151] to-transparent" />
+                      <section className="mb-6 animate-in fade-in-0 duration-200 text-center">
+                        <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.15em] text-[#6b7280]">
+                          Example
+                        </span>
+                        {cardData.sentenceKana && (
+                          <p className="mb-3 text-xl font-medium leading-relaxed text-[#f3f4f6]">{cardData.sentenceKana}</p>
+                        )}
+                        {cardData.sentenceEnglish && (
+                          <p className="mb-4 text-base italic leading-relaxed text-[#9ca3af]">{cardData.sentenceEnglish}</p>
+                        )}
+                        {cardData.audioCount > 0 && (
+                          <button
+                            className="inline-flex items-center gap-2 rounded-full border border-[#4b5563] bg-transparent px-4 py-2 text-xs font-medium text-[#d1d5db] transition-colors hover:bg-[#2d2d2d]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Volume2 className="h-3.5 w-3.5" />
+                            Sentence Audio
+                          </button>
+                        )}
+                      </section>
+                    </>
+                  )}
+
+                  {cardData.sentenceImage && (
+                    <>
+                      <div className="my-6 h-px bg-gradient-to-r from-transparent via-[#374151] to-transparent" />
+                      <section className="animate-in fade-in-0 duration-200 text-center">
+                        <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.15em] text-[#6b7280]">
+                          Visual
+                        </span>
+                        <div className="inline-block max-w-full overflow-visible rounded-2xl bg-[#2d2d2d]">
+                          <img
+                            src={cardData.sentenceImage}
+                            alt="Word visual"
+                            className="block h-auto max-h-[220px] w-auto max-w-full object-contain"
+                          />
+                        </div>
+                      </section>
+                    </>
                   )}
                 </div>
               )}
 
               {/* Subtle hint */}
-              <div className="absolute top-2 right-2 text-xs text-muted-foreground opacity-50">
+              <div className="absolute bottom-2 right-3 text-[11px] text-[#9ca3af] opacity-70">
                 {isFlipped ? "← Back" : "Front →"}
               </div>
             </div>
