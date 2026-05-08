@@ -9,7 +9,7 @@ import type { Card } from "@/types/card"
 import { Menu, Settings, Download, Loader2, Trash2, History } from "lucide-react"
 import SettingsModal from "@/components/settings-modal"
 import CardHistoryModal from "@/components/card-history-modal"
-import { generateCards, downloadApkg, getConfig, type CardInput } from "@/lib/api"
+import { generateCards, downloadApkg, getConfig } from "@/lib/api"
 import { toast } from "sonner"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -34,13 +34,18 @@ import {
   SheetContent,
 } from "@/components/ui/sheet"
 import {
-  containsKanji,
-  deriveKanaFromFurigana,
   getCardCompletionState,
-  getJapaneseWord,
   normalizeCardFromJapaneseInput,
   type CompletionReason,
 } from "@/lib/card-utils"
+import {
+  createCardId,
+  createEmptyCardDraft,
+  createNewCard,
+  hasCardContent,
+  toApiCardInput,
+} from "@/lib/card-factories"
+import { reorderCards } from "@/lib/card-order"
 
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([])
@@ -56,18 +61,7 @@ export default function Home() {
   const [isApiKeySet, setIsApiKeySet] = useState(false)
   const isMobile = useIsMobile()
 
-  const emptyCard = {
-    reading: "",
-    kanji: "",
-    furigana: "",
-    translation: "",
-    sentenceKana: "",
-    sentenceEnglish: "",
-    sentenceImage: "",
-    audioCount: 1,
-    generationMode: "both" as const,
-    notes: "",
-  }
+  const emptyCard = createEmptyCardDraft()
 
   useEffect(() => {
     const saved = localStorage.getItem("ankiCards")
@@ -202,20 +196,9 @@ export default function Home() {
   const cardData = currentCard || emptyCard
 
   const handleNewCard = () => {
-    const newCard: Card = {
-      id: Date.now().toString(),
-      ...emptyCard,
-      generationMode: "both",
-      createdAt: Date.now(),
-    }
+    const newCard: Card = createNewCard()
     setCards((prevCards) => [...prevCards, newCard])
     setActiveCardId(newCard.id)
-  }
-
-  const handleSaveCard = () => {
-    if (currentCard) {
-      console.log("[v0] Card saved:", currentCard)
-    }
   }
 
   const isCardEmpty = (card: Card): boolean => getCardCompletionState(card).reasons.length >= 2
@@ -301,28 +284,13 @@ export default function Home() {
   }
 
   const handleReorderCards = (fromIndex: number, toIndex: number) => {
-    setCards((prevCards) => {
-      if (
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= prevCards.length ||
-        toIndex >= prevCards.length ||
-        fromIndex === toIndex
-      ) {
-        return prevCards
-      }
-
-      const updatedCards = [...prevCards]
-      const [movedCard] = updatedCards.splice(fromIndex, 1)
-      updatedCards.splice(toIndex, 0, movedCard)
-      return updatedCards
-    })
+    setCards((prevCards) => reorderCards(prevCards, fromIndex, toIndex))
   }
 
   const updateCardData = (data: typeof cardData) => {
     if (activeCardId) {
-      setCards(
-        cards.map((c) =>
+      setCards((previousCards) =>
+        previousCards.map((c) =>
           c.id === activeCardId
             ? {
                 ...c,
@@ -351,7 +319,7 @@ export default function Home() {
   }
 
   const handleGenerateCards = async () => {
-    const nonEmptyCards = cards.filter((card) => getJapaneseWord(card) || card.translation.trim())
+    const nonEmptyCards = cards.filter(hasCardContent)
     
     if (nonEmptyCards.length === 0) {
       toast.error("No cards to generate", {
@@ -370,25 +338,7 @@ export default function Home() {
     setIsGenerating(true)
 
     try {
-      // Convert frontend card format to API format
-      const apiCards: CardInput[] = nonEmptyCards.map((card) => ({
-        reading: containsKanji(getJapaneseWord(card))
-          ? deriveKanaFromFurigana(card.furigana)
-          : getJapaneseWord(card),
-        kanji: containsKanji(getJapaneseWord(card))
-          ? {
-              kanji: getJapaneseWord(card),
-              furigana: card.furigana || "",
-            }
-          : null,
-        translation: card.translation,
-        sentence_kana: card.sentenceKana || "",
-        sentence_english: card.sentenceEnglish || "",
-        sentence_image: card.sentenceImage || "",
-        audio_count: card.audioCount > 0 ? card.audioCount : null,
-        generation_mode: card.generationMode || "both",
-        notes: card.notes || "",
-      }))
+      const apiCards = nonEmptyCards.map(toApiCardInput)
 
       const response = await generateCards({ cards: apiCards })
 
@@ -442,7 +392,7 @@ export default function Home() {
     // Generate new ID to avoid conflicts
     const restoredCard: Card = {
       ...normalizeCardFromJapaneseInput(card),
-      id: Date.now().toString(),
+      id: createCardId(),
       createdAt: Date.now(),
       notes: card.notes ?? "",
     }
@@ -474,7 +424,7 @@ export default function Home() {
     // Generate new IDs for all restored cards
     const restoredCards: Card[] = newCards.map((card) => ({
       ...normalizeCardFromJapaneseInput(card),
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: `${createCardId()}-${Math.random().toString(36).slice(2, 11)}`,
       createdAt: Date.now(),
       notes: card.notes ?? "",
     }))

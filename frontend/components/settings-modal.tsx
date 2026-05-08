@@ -15,6 +15,28 @@ interface SettingsModalProps {
   onApiKeyStatusChange?: (isSet: boolean) => void
 }
 
+const MASKED_API_KEY_PREFIX = "••••"
+const MASKED_API_KEY_PLACEHOLDER = "••••••••••••••••"
+
+type StoredAudioConfig = {
+  apiKey: string
+  voiceId: string
+  modelId: string
+}
+
+export const parseStoredAudioConfig = (rawConfig: string): StoredAudioConfig | null => {
+  try {
+    const parsed = JSON.parse(rawConfig)
+    return {
+      apiKey: parsed.apiKey || "",
+      voiceId: parsed.voiceId || "",
+      modelId: parsed.modelId || "",
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("")
   const [voiceId, setVoiceId] = useState("")
@@ -49,7 +71,7 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
       setModelId(config.model_id || "")
       // API key is not returned for security, only whether it's set
       if (config.api_key_set) {
-        setApiKey("••••••••••••••••") // Show placeholder
+        setApiKey(MASKED_API_KEY_PLACEHOLDER)
       }
       onApiKeyStatusChange?.(config.api_key_set)
     } catch (error) {
@@ -57,11 +79,15 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
       // Load from localStorage as fallback
       const saved = localStorage.getItem("audioConfig")
       if (saved) {
-        const config = JSON.parse(saved)
-        setApiKey(config.apiKey || "")
-        setVoiceId(config.voiceId || "")
-        setModelId(config.modelId || "")
-        onApiKeyStatusChange?.(Boolean(config.apiKey))
+        const parsedConfig = parseStoredAudioConfig(saved)
+        if (parsedConfig) {
+          setApiKey(parsedConfig.apiKey)
+          setVoiceId(parsedConfig.voiceId)
+          setModelId(parsedConfig.modelId)
+          onApiKeyStatusChange?.(Boolean(parsedConfig.apiKey))
+        } else {
+          onApiKeyStatusChange?.(false)
+        }
       }
     } finally {
       setIsLoading(false)
@@ -73,8 +99,9 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
     setIsSaving(true)
     try {
       // Only send API key if it's been changed (not the placeholder)
-      const apiKeyToSend = apiKey.startsWith("••••") ? "" : apiKey
-      const isApiKeySet = apiKey.startsWith("••••") || apiKeyToSend.trim().length > 0
+      const apiKeyIsMasked = apiKey.startsWith(MASKED_API_KEY_PREFIX)
+      const apiKeyToSend = apiKeyIsMasked ? "" : apiKey
+      const isApiKeySet = apiKeyIsMasked || apiKeyToSend.trim().length > 0
       
       await updateConfig({
         api_key: apiKeyToSend,
@@ -84,7 +111,7 @@ export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange
       
       // Also save to localStorage as backup
       localStorage.setItem("audioConfig", JSON.stringify({
-        apiKey: apiKeyToSend,
+        apiKey: apiKeyIsMasked ? MASKED_API_KEY_PLACEHOLDER : apiKeyToSend,
         voiceId,
         modelId,
       }))

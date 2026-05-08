@@ -7,28 +7,30 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Trash2 } from "lucide-react"
 import ImageUpload from "@/components/image-upload"
-import type { CardGenerationMode } from "@/types/card"
+import type { CardDraft } from "@/types/card"
 import {
   containsKanji,
   FORBIDDEN_PATH_CHARACTERS,
-  generateFuriganaTemplate,
   getForbiddenPathCharacters,
+  normalizeCardFromJapaneseInput,
 } from "@/lib/card-utils"
 
 interface CardCreatorProps {
-  cardData: {
-    reading: string
-    kanji: string
-    furigana: string
-    translation: string
-    sentenceKana: string
-    sentenceEnglish: string
-    sentenceImage: string
-    audioCount: number
-    generationMode: CardGenerationMode
-    notes: string
+  cardData: CardDraft
+  setCardData: (data: CardDraft) => void
+}
+
+const MIN_AUDIO_COUNT = 0
+const MAX_AUDIO_COUNT = 10
+const DEFAULT_AUDIO_COUNT = 1
+const DEFAULT_GENERATION_MODE = "both"
+
+export const sanitizeAudioCount = (rawValue: string): number => {
+  const parsedCount = Number.parseInt(rawValue, 10)
+  if (Number.isNaN(parsedCount)) {
+    return MIN_AUDIO_COUNT
   }
-  setCardData: (data: any) => void
+  return Math.min(MAX_AUDIO_COUNT, Math.max(MIN_AUDIO_COUNT, parsedCount))
 }
 
 export default function CardCreator({ cardData, setCardData }: CardCreatorProps) {
@@ -39,34 +41,28 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
   const forbiddenFuriganaChars = getForbiddenPathCharacters(cardData.furigana)
   const forbiddenSentenceKanaChars = getForbiddenPathCharacters(cardData.sentenceKana)
 
-  const handleInputChange = (field: string, value: string | number) => {
-    const updates: any = {
+  const updateJapaneseWord = (value: string) => {
+    const normalized = normalizeCardFromJapaneseInput({
       ...cardData,
-    }
-    if (field !== "japaneseWord") {
-      updates[field] = value
-    }
+      id: "preview-card",
+      createdAt: 0,
+      reading: value,
+      kanji: "",
+    })
+    setCardData({
+      ...cardData,
+      reading: normalized.reading,
+      kanji: normalized.kanji,
+      furigana: normalized.furigana,
+    })
+  }
 
-    // Keep one Japanese input as the UI source of truth.
-    if (field === "japaneseWord" && typeof value === "string") {
-      const nextWord = value
-      const currentFurigana = cardData.furigana
+  const updateAudioCount = (rawValue: string) => {
+    setCardData({ ...cardData, audioCount: sanitizeAudioCount(rawValue) })
+  }
 
-      if (containsKanji(nextWord)) {
-        updates.kanji = nextWord
-        updates.reading = ""
-        const previousTemplate = generateFuriganaTemplate(cardData.kanji || cardData.reading)
-        if (!currentFurigana || currentFurigana === previousTemplate) {
-          updates.furigana = generateFuriganaTemplate(nextWord)
-        }
-      } else {
-        updates.reading = nextWord
-        updates.kanji = ""
-        updates.furigana = ""
-      }
-    }
-
-    setCardData(updates)
+  const handleInputChange = <K extends keyof CardDraft>(field: K, value: CardDraft[K]) => {
+    setCardData({ ...cardData, [field]: value })
   }
 
   const handleClear = () => {
@@ -78,8 +74,8 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
       sentenceKana: "",
       sentenceEnglish: "",
       sentenceImage: "",
-      audioCount: 1,
-      generationMode: "both",
+      audioCount: DEFAULT_AUDIO_COUNT,
+      generationMode: DEFAULT_GENERATION_MODE,
       notes: "",
     })
   }
@@ -105,7 +101,7 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
               id="japaneseWord"
               placeholder="e.g., ビジネス / 色々 / 冷たい"
               value={japaneseWord}
-              onChange={(e) => handleInputChange("japaneseWord", e.target.value)}
+              onChange={(e) => updateJapaneseWord(e.target.value)}
               className={`border-input bg-muted text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors ${
                 forbiddenWordChars.length > 0 ? "border-destructive focus-visible:ring-destructive/30" : ""
               }`}
@@ -221,7 +217,7 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
                 min="0"
                 max="10"
                 value={cardData.audioCount}
-                onChange={(e) => handleInputChange("audioCount", Number.parseInt(e.target.value))}
+                onChange={(e) => updateAudioCount(e.target.value)}
                 className="border-input bg-muted text-foreground hover:border-primary/50 focus:border-primary transition-colors"
               />
               <span className="text-sm text-muted-foreground">
