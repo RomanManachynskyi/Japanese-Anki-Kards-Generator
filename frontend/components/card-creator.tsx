@@ -8,6 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Trash2 } from "lucide-react"
 import ImageUpload from "@/components/image-upload"
 import type { CardGenerationMode } from "@/types/card"
+import {
+  containsKanji,
+  FORBIDDEN_PATH_CHARACTERS,
+  generateFuriganaTemplate,
+  getForbiddenPathCharacters,
+} from "@/lib/card-utils"
 
 interface CardCreatorProps {
   cardData: {
@@ -26,82 +32,37 @@ interface CardCreatorProps {
 }
 
 export default function CardCreator({ cardData, setCardData }: CardCreatorProps) {
-  // Check if a character is a kanji (CJK Unified Ideographs)
-  const isKanji = (char: string): boolean => {
-    const code = char.charCodeAt(0)
-    return (
-      (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
-      (code >= 0x3400 && code <= 0x4dbf) || // CJK Extension A
-      (code >= 0x20000 && code <= 0x2a6df) || // CJK Extension B
-      (code >= 0x2a700 && code <= 0x2b73f) || // CJK Extension C
-      (code >= 0x2b740 && code <= 0x2b81f) || // CJK Extension D
-      (code >= 0xf900 && code <= 0xfaff) // CJK Compatibility Ideographs
-    )
-  }
-
-  // Check if a character is hiragana
-  const isHiragana = (char: string): boolean => {
-    const code = char.charCodeAt(0)
-    return code >= 0x3040 && code <= 0x309F
-  }
-
-  // Check if a character is katakana
-  const isKatakana = (char: string): boolean => {
-    const code = char.charCodeAt(0)
-    return code >= 0x30A0 && code <= 0x30FF
-  }
-
-  // Check if text consists of only one kanji with no other characters
-  const isSingleKanjiOnly = (text: string): boolean => {
-    if (!text || text.length === 0) return false
-    
-    const trimmed = text.trim()
-    if (trimmed.length !== 1) return false
-    
-    // Check if it's a kanji
-    if (!isKanji(trimmed)) return false
-    
-    // Check if there are no other characters (hiragana, katakana, or other kanji)
-    // Since we already checked length === 1 and it's a kanji, this is already satisfied
-    return true
-  }
-
-  // Generate furigana brackets for kanji
-  const generateFuriganaBrackets = (kanji: string): string => {
-    if (!kanji) return ""
-    
-    let result = ""
-    for (let i = 0; i < kanji.length; i++) {
-      const char = kanji[i]
-      if (isKanji(char)) {
-        result += `${char}[]`
-      } else {
-        result += char
-      }
-    }
-    return result
-  }
+  const japaneseWord = cardData.kanji || cardData.reading
+  const showFuriganaField = containsKanji(japaneseWord)
+  const forbiddenCharsLabel = FORBIDDEN_PATH_CHARACTERS.join(" ")
+  const forbiddenWordChars = getForbiddenPathCharacters(japaneseWord)
+  const forbiddenFuriganaChars = getForbiddenPathCharacters(cardData.furigana)
+  const forbiddenSentenceKanaChars = getForbiddenPathCharacters(cardData.sentenceKana)
 
   const handleInputChange = (field: string, value: string | number) => {
     const updates: any = {
       ...cardData,
-      [field]: value,
+    }
+    if (field !== "japaneseWord") {
+      updates[field] = value
     }
 
-    // Auto-generate furigana brackets when kanji changes
-    if (field === "kanji" && typeof value === "string") {
-      const newKanji = value
+    // Keep one Japanese input as the UI source of truth.
+    if (field === "japaneseWord" && typeof value === "string") {
+      const nextWord = value
       const currentFurigana = cardData.furigana
-      
-      // Don't auto-generate if it's a single kanji only (no other characters)
-      if (isSingleKanjiOnly(newKanji)) {
-        // Don't auto-generate furigana for single kanji
-        updates.furigana = currentFurigana || ""
-      } else {
-        // Only auto-generate if furigana is empty or matches old kanji pattern
-        if (!currentFurigana || currentFurigana === generateFuriganaBrackets(cardData.kanji)) {
-          updates.furigana = generateFuriganaBrackets(newKanji)
+
+      if (containsKanji(nextWord)) {
+        updates.kanji = nextWord
+        updates.reading = ""
+        const previousTemplate = generateFuriganaTemplate(cardData.kanji || cardData.reading)
+        if (!currentFurigana || currentFurigana === previousTemplate) {
+          updates.furigana = generateFuriganaTemplate(nextWord)
         }
+      } else {
+        updates.reading = nextWord
+        updates.kanji = ""
+        updates.furigana = ""
       }
     }
 
@@ -135,51 +96,55 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
           <CardDescription>Primary content shown on the front of the card</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Reading (Kana) */}
+          {/* Japanese Word */}
           <div className="space-y-2">
-            <Label htmlFor="reading" className="text-sm font-medium text-foreground">
-              Reading (Kana)
+            <Label htmlFor="japaneseWord" className="text-sm font-medium text-foreground">
+              Japanese Word
             </Label>
             <Input
-              id="reading"
-              placeholder="e.g., ビジネス"
-              value={cardData.reading}
-              onChange={(e) => handleInputChange("reading", e.target.value)}
-              className="border-input bg-muted text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors"
+              id="japaneseWord"
+              placeholder="e.g., ビジネス / 色々 / 冷たい"
+              value={japaneseWord}
+              onChange={(e) => handleInputChange("japaneseWord", e.target.value)}
+              className={`border-input bg-muted text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors ${
+                forbiddenWordChars.length > 0 ? "border-destructive focus-visible:ring-destructive/30" : ""
+              }`}
             />
-            <p className="text-xs text-muted-foreground">Katakana or Hiragana pronunciation</p>
+            <p className="text-xs text-muted-foreground">
+              Enter kana-only or kanji word. Furigana appears automatically for kanji.
+            </p>
+            {forbiddenWordChars.length > 0 && (
+              <p className="text-xs text-destructive">
+                Forbidden characters in Japanese word: {forbiddenWordChars.join(" ")}. Not allowed: {forbiddenCharsLabel}
+              </p>
+            )}
           </div>
 
-          {/* Kanji Section */}
-          <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4">
-            <Label className="text-sm font-medium text-foreground">Kanji (Optional)</Label>
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="kanji" className="text-xs text-muted-foreground">
-                  Kanji Characters
-                </Label>
-                <Input
-                  id="kanji"
-                  placeholder="e.g., 歴史"
-                  value={cardData.kanji}
-                  onChange={(e) => handleInputChange("kanji", e.target.value)}
-                  className="mt-1 border-input bg-card text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors"
-                />
-              </div>
+          {/* Furigana Section */}
+          {showFuriganaField && (
+            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4">
+              <Label className="text-sm font-medium text-foreground">Furigana</Label>
               <div>
                 <Label htmlFor="furigana" className="text-xs text-muted-foreground">
-                  Furigana
+                  Fill all readings inside brackets
                 </Label>
                 <Input
                   id="furigana"
-                  placeholder="e.g., 歴[れき]史[し]"
+                  placeholder="e.g., 色[いろ] 々[いろ]"
                   value={cardData.furigana}
                   onChange={(e) => handleInputChange("furigana", e.target.value)}
-                  className="mt-1 border-input bg-card text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors"
+                  className={`mt-1 border-input bg-card text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors ${
+                    forbiddenFuriganaChars.length > 0 ? "border-destructive focus-visible:ring-destructive/30" : ""
+                  }`}
                 />
+                {forbiddenFuriganaChars.length > 0 && (
+                  <p className="mt-1 text-xs text-destructive">
+                    Forbidden characters in furigana: {forbiddenFuriganaChars.join(" ")}. Not allowed: {forbiddenCharsLabel}
+                  </p>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Translation */}
           <div className="space-y-2">
@@ -217,9 +182,16 @@ export default function CardCreator({ cardData, setCardData }: CardCreatorProps)
               placeholder="e.g., 郵便局に行きます"
               value={cardData.sentenceKana}
               onChange={(e) => handleInputChange("sentenceKana", e.target.value)}
-              className="border-input bg-muted text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors"
+              className={`border-input bg-muted text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary transition-colors ${
+                forbiddenSentenceKanaChars.length > 0 ? "border-destructive focus-visible:ring-destructive/30" : ""
+              }`}
               rows={2}
             />
+            {forbiddenSentenceKanaChars.length > 0 && (
+              <p className="text-xs text-destructive">
+                Forbidden characters in Japanese sentence: {forbiddenSentenceKanaChars.join(" ")}. Not allowed: {forbiddenCharsLabel}
+              </p>
+            )}
           </div>
 
           {/* Example Sentence - English */}

@@ -12,9 +12,10 @@ import { toast } from "sonner"
 interface SettingsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onApiKeyStatusChange?: (isSet: boolean) => void
 }
 
-export default function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+export default function SettingsModal({ open, onOpenChange, onApiKeyStatusChange }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("")
   const [voiceId, setVoiceId] = useState("")
   const [modelId, setModelId] = useState("")
@@ -50,6 +51,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
       if (config.api_key_set) {
         setApiKey("••••••••••••••••") // Show placeholder
       }
+      onApiKeyStatusChange?.(config.api_key_set)
     } catch (error) {
       console.error("Failed to load config:", error)
       // Load from localStorage as fallback
@@ -59,6 +61,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
         setApiKey(config.apiKey || "")
         setVoiceId(config.voiceId || "")
         setModelId(config.modelId || "")
+        onApiKeyStatusChange?.(Boolean(config.apiKey))
       }
     } finally {
       setIsLoading(false)
@@ -71,6 +74,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
     try {
       // Only send API key if it's been changed (not the placeholder)
       const apiKeyToSend = apiKey.startsWith("••••") ? "" : apiKey
+      const isApiKeySet = apiKey.startsWith("••••") || apiKeyToSend.trim().length > 0
       
       await updateConfig({
         api_key: apiKeyToSend,
@@ -88,6 +92,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
       toast.success("Settings saved", {
         description: "Your audio configuration has been updated",
       })
+      onApiKeyStatusChange?.(isApiKeySet)
       onOpenChange(false)
     } catch (error) {
       console.error("Failed to save config:", error)

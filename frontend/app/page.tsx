@@ -9,7 +9,7 @@ import type { Card } from "@/types/card"
 import { Menu, Settings, Download, Loader2, Trash2, History } from "lucide-react"
 import SettingsModal from "@/components/settings-modal"
 import CardHistoryModal from "@/components/card-history-modal"
-import { generateCards, downloadApkg, type CardInput } from "@/lib/api"
+import { generateCards, downloadApkg, getConfig, type CardInput } from "@/lib/api"
 import { toast } from "sonner"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -33,6 +33,14 @@ import {
   Sheet,
   SheetContent,
 } from "@/components/ui/sheet"
+import {
+  containsKanji,
+  deriveKanaFromFurigana,
+  getCardCompletionState,
+  getJapaneseWord,
+  normalizeCardFromJapaneseInput,
+  type CompletionReason,
+} from "@/lib/card-utils"
 
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([])
@@ -45,6 +53,7 @@ export default function Home() {
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [cardHistory, setCardHistory] = useState<Card[]>([])
+  const [isApiKeySet, setIsApiKeySet] = useState(false)
   const isMobile = useIsMobile()
 
   const emptyCard = {
@@ -65,7 +74,9 @@ export default function Home() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        const migrated = parsed.map((c: Card) => ({ ...c, notes: c.notes ?? "" }))
+        const migrated = parsed.map((c: Card) =>
+          normalizeCardFromJapaneseInput({ ...c, notes: c.notes ?? "" }),
+        )
         setCards(migrated)
         if (migrated.length > 0) {
           setActiveCardId(migrated[0].id)
@@ -80,7 +91,9 @@ export default function Home() {
     if (savedHistory) {
       try {
         const parsedHistory = JSON.parse(savedHistory)
-        const migratedHistory = parsedHistory.map((c: Card) => ({ ...c, notes: c.notes ?? "" }))
+        const migratedHistory = parsedHistory.map((c: Card) =>
+          normalizeCardFromJapaneseInput({ ...c, notes: c.notes ?? "" }),
+        )
         const sortedHistory = migratedHistory.sort((a: Card, b: Card) => {
           const aTime = a.createdAt || 0
           const bTime = b.createdAt || 0
@@ -93,6 +106,29 @@ export default function Home() {
     }
     
     setIsHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    const loadApiKeyStatus = async () => {
+      try {
+        const config = await getConfig()
+        setIsApiKeySet(config.api_key_set)
+      } catch {
+        const saved = localStorage.getItem("audioConfig")
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            setIsApiKeySet(Boolean(parsed.apiKey))
+            return
+          } catch {
+            // Ignore parse errors and fall through.
+          }
+        }
+        setIsApiKeySet(false)
+      }
+    }
+
+    loadApiKeyStatus()
   }, [])
 
   useEffect(() => {
@@ -182,9 +218,7 @@ export default function Home() {
     }
   }
 
-  const isCardEmpty = (card: Card): boolean => {
-    return !card.reading && !card.kanji && !card.translation
-  }
+  const isCardEmpty = (card: Card): boolean => getCardCompletionState(card).reasons.length >= 2
 
   const handleDeleteCard = (id: string) => {
     const cardToDelete = cards.find((c) => c.id === id)
@@ -266,6 +300,25 @@ export default function Home() {
     setActiveCardId(id)
   }
 
+  const handleReorderCards = (fromIndex: number, toIndex: number) => {
+    setCards((prevCards) => {
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= prevCards.length ||
+        toIndex >= prevCards.length ||
+        fromIndex === toIndex
+      ) {
+        return prevCards
+      }
+
+      const updatedCards = [...prevCards]
+      const [movedCard] = updatedCards.splice(fromIndex, 1)
+      updatedCards.splice(toIndex, 0, movedCard)
+      return updatedCards
+    })
+  }
+
   const updateCardData = (data: typeof cardData) => {
     if (activeCardId) {
       setCards(
@@ -281,11 +334,24 @@ export default function Home() {
     }
   }
 
-  // Check if there are any empty cards
-  const hasEmptyCards = cards.some(isCardEmpty)
+  const incompleteCards = cards
+    .map((card, index) => ({
+      index: index + 1,
+      state: getCardCompletionState(card),
+    }))
+    .filter((item) => !item.state.isComplete)
+
+  const hasIncompleteCards = incompleteCards.length > 0
+
+  const completionReasonLabel: Record<CompletionReason, string> = {
+    missing_japanese_word: "missing Japanese word",
+    missing_translation: "missing translation",
+    incomplete_furigana: "incomplete furigana",
+    invalid_path_characters: "contains forbidden path characters",
+  }
 
   const handleGenerateCards = async () => {
-    const nonEmptyCards = cards.filter((card) => card.kanji || card.reading || card.translation)
+    const nonEmptyCards = cards.filter((card) => getJapaneseWord(card) || card.translation.trim())
     
     if (nonEmptyCards.length === 0) {
       toast.error("No cards to generate", {
@@ -294,9 +360,9 @@ export default function Home() {
       return
     }
 
-    if (hasEmptyCards) {
+    if (hasIncompleteCards) {
       toast.error("Cannot generate cards", {
-        description: "Please remove or fill in all empty cards before generating",
+        description: "Please complete all unfinished cards before generating.",
       })
       return
     }
@@ -306,11 +372,15 @@ export default function Home() {
     try {
       // Convert frontend card format to API format
       const apiCards: CardInput[] = nonEmptyCards.map((card) => ({
-        reading: card.reading,
-        kanji: card.kanji ? {
-          kanji: card.kanji,
-          furigana: card.furigana || "",
-        } : null,
+        reading: containsKanji(getJapaneseWord(card))
+          ? deriveKanaFromFurigana(card.furigana)
+          : getJapaneseWord(card),
+        kanji: containsKanji(getJapaneseWord(card))
+          ? {
+              kanji: getJapaneseWord(card),
+              furigana: card.furigana || "",
+            }
+          : null,
         translation: card.translation,
         sentence_kana: card.sentenceKana || "",
         sentence_english: card.sentenceEnglish || "",
@@ -371,7 +441,7 @@ export default function Home() {
 
     // Generate new ID to avoid conflicts
     const restoredCard: Card = {
-      ...card,
+      ...normalizeCardFromJapaneseInput(card),
       id: Date.now().toString(),
       createdAt: Date.now(),
       notes: card.notes ?? "",
@@ -403,7 +473,7 @@ export default function Home() {
 
     // Generate new IDs for all restored cards
     const restoredCards: Card[] = newCards.map((card) => ({
-      ...card,
+      ...normalizeCardFromJapaneseInput(card),
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: Date.now(),
       notes: card.notes ?? "",
@@ -498,6 +568,7 @@ export default function Home() {
                 onSelectCard={handleSelectCard}
                 onNewCard={handleNewCard}
                 onDeleteCard={handleDeleteCard}
+                onReorderCards={handleReorderCards}
               />
             </div>
           )}
@@ -518,6 +589,7 @@ export default function Home() {
                     setSidebarOpen(false)
                   }}
                   onDeleteCard={handleDeleteCard}
+                  onReorderCards={handleReorderCards}
                 />
               </SheetContent>
             </Sheet>
@@ -560,7 +632,7 @@ export default function Home() {
                     <span className="inline-block flex-1 sm:flex-initial">
                       <Button
                         onClick={handleGenerateCards}
-                        disabled={cards.length === 0 || isGenerating || hasEmptyCards}
+                        disabled={cards.length === 0 || isGenerating || hasIncompleteCards || !isApiKeySet}
                         className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 transition-all disabled:hover:scale-100 text-xs sm:text-sm"
                       >
                         {isGenerating ? (
@@ -579,7 +651,7 @@ export default function Home() {
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  {(cards.length === 0 || hasEmptyCards || isGenerating) && (
+                  {(cards.length === 0 || hasIncompleteCards || isGenerating || !isApiKeySet) && (
                     <TooltipContent 
                       className="bg-popover text-popover-foreground border border-border shadow-md"
                       hideArrow={true}
@@ -588,8 +660,16 @@ export default function Home() {
                         "Generating cards, please wait..."
                       ) : cards.length === 0 ? (
                         "Please add at least one card before generating"
-                      ) : hasEmptyCards ? (
-                        "Please remove or fill in all empty cards before generating"
+                      ) : !isApiKeySet ? (
+                        "Please set your ElevenLabs API key in Audio Settings"
+                      ) : hasIncompleteCards ? (
+                        <div className="space-y-1">
+                          {incompleteCards.map((item) => (
+                            <p key={item.index}>
+                              Card {item.index}: {item.state.reasons.map((reason) => completionReasonLabel[reason]).join(", ")}
+                            </p>
+                          ))}
+                        </div>
                       ) : null}
                     </TooltipContent>
                   )}
@@ -600,7 +680,11 @@ export default function Home() {
         </footer>
       </div>
 
-      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsModal
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onApiKeyStatusChange={setIsApiKeySet}
+      />
       <CardHistoryModal
         open={historyOpen}
         onOpenChange={setHistoryOpen}
