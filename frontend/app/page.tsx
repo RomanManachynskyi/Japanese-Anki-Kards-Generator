@@ -48,6 +48,7 @@ import {
 import { reorderCards } from "@/lib/card-order"
 
 export default function Home() {
+  const DEFAULT_DECK_NAME = "Japanese Vocabulary"
   const [cards, setCards] = useState<Card[]>([])
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -56,9 +57,12 @@ export default function Home() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false)
+  const [generateDeckDialogOpen, setGenerateDeckDialogOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [cardHistory, setCardHistory] = useState<Card[]>([])
   const [isApiKeySet, setIsApiKeySet] = useState(false)
+  const [deckName, setDeckName] = useState(DEFAULT_DECK_NAME)
+  const [pendingDeckName, setPendingDeckName] = useState(DEFAULT_DECK_NAME)
   const isMobile = useIsMobile()
 
   const emptyCard = createEmptyCardDraft()
@@ -303,7 +307,7 @@ export default function Home() {
     invalid_path_characters: "contains forbidden path characters",
   }
 
-  const handleGenerateCards = async () => {
+  const handleGenerateCards = () => {
     const nonEmptyCards = cards.filter(hasCardContent)
     
     if (nonEmptyCards.length === 0) {
@@ -320,12 +324,22 @@ export default function Home() {
       return
     }
 
+    setPendingDeckName(deckName)
+    setGenerateDeckDialogOpen(true)
+  }
+
+  const handleConfirmGenerateCards = async () => {
+    const nonEmptyCards = cards.filter(hasCardContent)
+
     setIsGenerating(true)
+    setGenerateDeckDialogOpen(false)
 
     try {
       const apiCards = nonEmptyCards.map(toApiCardInput)
 
-      const response = await generateCards({ cards: apiCards })
+      const normalizedDeckName = pendingDeckName.trim() || DEFAULT_DECK_NAME
+      setDeckName(normalizedDeckName)
+      const response = await generateCards({ cards: apiCards, deck_name: normalizedDeckName })
 
       if (response.success && response.apkg_path) {
         toast.success("Cards generated successfully!", {
@@ -530,11 +544,13 @@ export default function Home() {
 
         <footer className="border-t border-border bg-card">
           <div className="container mx-auto max-w-7xl px-3 sm:px-4 py-3 sm:py-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {cards.length} card{cards.length !== 1 ? "s" : ""} created
-              </p>
-              <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {cards.length} card{cards.length !== 1 ? "s" : ""} created
+                </p>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto sm:justify-end">
                 <Button
                   onClick={() => setClearAllDialogOpen(true)}
                   disabled={cards.length === 0}
@@ -612,6 +628,40 @@ export default function Home() {
         onClearHistory={handleClearHistory}
         onDeleteFromHistory={handleDeleteFromHistory}
       />
+
+      <AlertDialog
+        open={generateDeckDialogOpen}
+        onOpenChange={setGenerateDeckDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Generate Cards</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose a deck name for the generated Anki package.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="generation-deck-name" className="text-sm font-medium">
+              Deck name
+            </Label>
+            <Input
+              id="generation-deck-name"
+              type="text"
+              value={pendingDeckName}
+              onChange={(event) => setPendingDeckName(event.target.value)}
+              placeholder={DEFAULT_DECK_NAME}
+              className="mt-2"
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmGenerateCards}>
+              Generate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={clearAllDialogOpen}

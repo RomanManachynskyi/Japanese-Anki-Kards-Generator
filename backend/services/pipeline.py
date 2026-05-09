@@ -7,6 +7,8 @@ from services.audio_generator import AudioGenerator
 from services.file_manager import FileManager
 from services.vocabulary_processor import VocabularyProcessor
 
+DEFAULT_DECK_NAME = "Japanese Vocabulary"
+
 
 @dataclass
 class RuntimeAudioConfig:
@@ -32,6 +34,7 @@ class GenerationPipelineResult:
 def run_generation_pipeline(
     vocabulary_items: List[Dict[str, Any]],
     runtime_audio_config: RuntimeAudioConfig,
+    deck_name: str = DEFAULT_DECK_NAME,
     file_manager: Optional[FileManager] = None,
     vocabulary_processor_factory: Callable[[AudioGenerator], VocabularyProcessor] = VocabularyProcessor,
     save_outputs: bool = False,
@@ -50,7 +53,7 @@ def run_generation_pipeline(
     vocabulary_processor = vocabulary_processor_factory(audio_generator=audio_generator)
     processed_items = vocabulary_processor.process_vocabulary(vocabulary_items, str(audio_dir))
 
-    apkg_path = create_anki_package(results_dir, processed_items)
+    apkg_path = create_anki_package(results_dir, processed_items, deck_name=deck_name)
     saved_files = None
     if save_outputs:
         payload_for_storage = original_input if original_input is not None else {"vocabulary": vocabulary_items}
