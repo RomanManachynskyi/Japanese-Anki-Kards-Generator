@@ -92,7 +92,7 @@ function CardBack({ cardData, showNotes, setShowNotes }: { cardData: CardDraft; 
       )}
 
       <section className="mb-6 animate-in fade-in-0 duration-200 text-center">
-        <div className="mb-3 text-[clamp(2rem,8vw,3.5rem)] font-semibold leading-snug text-[#f5f5f5] [&_ruby_rt]:text-[0.4em] [&_ruby_rt]:font-medium [&_ruby_rt]:text-[#9ca3af]">
+        <div className="mb-3 text-[clamp(2rem,8vw,3.5rem)] font-semibold leading-snug text-[#f5f5f5] [&_ruby]:inline-flex [&_ruby]:flex-col-reverse [&_ruby]:items-stretch [&_ruby]:align-bottom [&_ruby]:text-center [&_ruby_rt]:block [&_ruby_rt]:w-full [&_ruby_rt]:min-w-full [&_ruby_rt]:box-border [&_ruby_rt]:text-center [&_ruby_rt]:tracking-normal [&_ruby_rt]:text-[0.4em] [&_ruby_rt]:font-medium [&_ruby_rt]:text-[#9ca3af]">
           {cardData.furigana ? furiganaToRuby(cardData.furigana) : cardData.kanji || cardData.reading}
         </div>
 
