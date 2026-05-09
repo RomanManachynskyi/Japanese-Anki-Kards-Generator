@@ -14,9 +14,34 @@ import config
 DEFAULT_GENERATION_MODE = "both"
 JP_EN_GENERATION_MODE = "jp_en"
 EN_JP_GENERATION_MODE = "en_jp"
-EN_JP_EMPTY_TRANSLATION_PLACEHOLDER = "  "
 TEMPLATE_DIRECTORY = Path(__file__).resolve().parent.parent / "templates"
-ANKI_FIELD_NAMES = [
+JP_EN_FIELD_NAMES = [
+    "Vocabulary-Kanji",
+    "Vocabulary-Kana",
+    "Word-Furigana",
+    "Vocabulary-English",
+    "Vocabulary-Audio",
+    "Has-Example",
+    "Sentence-Kana",
+    "Sentence-English",
+    "Sentence-Audio",
+    "Word-Image",
+    "Notes",
+]
+EN_JP_FIELD_NAMES = [
+    "Vocabulary-English",
+    "Vocabulary-Kana",
+    "Word-Furigana",
+    "Vocabulary-Kanji",
+    "Vocabulary-Audio",
+    "Has-Example",
+    "Sentence-Kana",
+    "Sentence-English",
+    "Sentence-Audio",
+    "Word-Image",
+    "Notes",
+]
+ANKI_NOTE_FIELD_NAMES = [
     "Vocabulary-Kanji",
     "Vocabulary-Kana",
     "Word-Furigana",
@@ -62,11 +87,11 @@ def _decode_word_image(word_image_data):
         return "", []
 
 
-def _build_note_model(model_id, name, template_name, question_format, answer_format):
+def _build_note_model(model_id, name, template_name, question_format, answer_format, field_names):
     return genanki.Model(
         model_id,
         name,
-        fields=[{"name": field_name} for field_name in ANKI_FIELD_NAMES],
+        fields=[{"name": field_name} for field_name in field_names],
         templates=[{"name": template_name, "qfmt": question_format, "afmt": answer_format}],
         css="",
     )
@@ -94,7 +119,7 @@ def _build_en_jp_note_fields(fields):
         fields["Vocabulary-English"],
         fields["Vocabulary-Kana"],
         fields["Word-Furigana"],
-        EN_JP_EMPTY_TRANSLATION_PLACEHOLDER,
+        fields["Vocabulary-Kanji"],
         fields["Vocabulary-Audio"],
         fields["Has-Example"],
         fields["Sentence-Kana"],
@@ -129,7 +154,7 @@ def _collect_image_media(results_dir, anki_note_data, media_files):
 
 def _extract_ordered_fields(anki_note_data):
     source_fields = anki_note_data.get("fields", {})
-    return {field_name: str(source_fields.get(field_name, "") or "") for field_name in ANKI_FIELD_NAMES}
+    return {field_name: str(source_fields.get(field_name, "") or "") for field_name in ANKI_NOTE_FIELD_NAMES}
 
 
 def build_anki_note(word):
@@ -179,11 +204,13 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
     def _strip_comments(html):
         return re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL).strip()
 
-    _front_html = (TEMPLATE_DIRECTORY / "anki-card-front.html").read_text(encoding="utf-8")
+    _front_jp_en_html = (TEMPLATE_DIRECTORY / "anki-card-front.html").read_text(encoding="utf-8")
+    _front_en_jp_html = (TEMPLATE_DIRECTORY / "anki-card-front-en-jp.html").read_text(encoding="utf-8")
     _back_jp_en_html = (TEMPLATE_DIRECTORY / "anki-card-back-jp-en.html").read_text(encoding="utf-8")
     _back_en_jp_html = (TEMPLATE_DIRECTORY / "anki-card-back-en-jp.html").read_text(encoding="utf-8")
 
-    _qfmt = _strip_comments(_front_html)
+    _qfmt_jp_en = _strip_comments(_front_jp_en_html)
+    _qfmt_en_jp = _strip_comments(_front_en_jp_html)
     _afmt_jp_en = _strip_comments(_back_jp_en_html)
     _afmt_en_jp = _strip_comments(_back_en_jp_html)
 
@@ -191,16 +218,18 @@ def create_anki_package(results_dir, results, deck_name="Japanese Vocabulary"):
         note_type_id,
         "Japanese-Anki-Kard (Japanese→English)",
         "Japanese to English",
-        _qfmt,
+        _qfmt_jp_en,
         _afmt_jp_en,
+        JP_EN_FIELD_NAMES,
     )
 
     note_model_en_jp = _build_note_model(
         note_type_id + 1,
         "Japanese-Anki-Kard (English→Japanese)",
         "English to Japanese",
-        _qfmt,
+        _qfmt_en_jp,
         _afmt_en_jp,
+        EN_JP_FIELD_NAMES,
     )
     
     deck_id = int(datetime.now().timestamp())

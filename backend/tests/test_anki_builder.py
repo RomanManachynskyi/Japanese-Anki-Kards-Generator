@@ -2,10 +2,39 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from services.anki_builder import build_anki_note, create_anki_package
+from services.anki_builder import (
+    EN_JP_FIELD_NAMES,
+    _build_en_jp_note_fields,
+    build_anki_note,
+    create_anki_package,
+)
 
 
 class AnkiBuilderTests(unittest.TestCase):
+    def test_en_jp_model_uses_vocabulary_english_as_first_field(self):
+        self.assertEqual("Vocabulary-English", EN_JP_FIELD_NAMES[0])
+        self.assertEqual("Vocabulary-Kanji", EN_JP_FIELD_NAMES[3])
+
+    def test_build_en_jp_note_fields_puts_english_value_first(self):
+        fields = {
+            "Vocabulary-Kanji": "家族",
+            "Vocabulary-Kana": "かぞく",
+            "Word-Furigana": "家族[かぞく]",
+            "Vocabulary-English": "family",
+            "Vocabulary-Audio": "[sound:test_1.mp3]",
+            "Has-Example": "",
+            "Sentence-Kana": "",
+            "Sentence-English": "",
+            "Sentence-Audio": "",
+            "Word-Image": "",
+            "Notes": "",
+        }
+
+        ordered_fields = _build_en_jp_note_fields(fields)
+
+        self.assertEqual("family", ordered_fields[0])
+        self.assertEqual("家族", ordered_fields[3])
+
     def test_build_anki_note_sets_image_audio_and_example_fields(self):
         note_payload = build_anki_note(
             {

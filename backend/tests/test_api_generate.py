@@ -38,6 +38,25 @@ class ApiGenerateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, response.total_cards)
         self.assertEqual(2, response.total_audio_files)
 
+    async def test_generate_cards_passes_custom_deck_name_to_pipeline(self):
+        request_payload = GenerateRequest(
+            cards=[
+                CardInput(
+                    reading="かぞく",
+                    kanji=KanjiData(kanji="家族", furigana="家族[かぞく]"),
+                    translation="family",
+                    generation_mode="both",
+                )
+            ],
+            deck_name=" Family Deck ",
+        )
+
+        with patch.object(api, "run_generation_pipeline") as run_pipeline_mock:
+            run_pipeline_mock.return_value = _FakePipelineResult()
+            await generate_cards(request_payload)
+
+        self.assertEqual("Family Deck", run_pipeline_mock.call_args.kwargs["deck_name"])
+
 
 if __name__ == "__main__":
     unittest.main()

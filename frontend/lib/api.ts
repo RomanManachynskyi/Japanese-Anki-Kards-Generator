@@ -25,6 +25,7 @@ export interface CardInput {
 
 export interface GenerateRequest {
   cards: CardInput[]
+  deck_name?: string
 }
 
 export interface GenerateResponse {

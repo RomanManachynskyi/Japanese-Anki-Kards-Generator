@@ -17,6 +17,7 @@ app = FastAPI(title="Anki Card Generator API")
 
 LOCAL_FRONTEND_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 DEFAULT_GENERATION_MODE = "both"
+DEFAULT_DECK_NAME = "Japanese Vocabulary"
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +47,7 @@ class CardInput(BaseModel):
 
 class GenerateRequest(BaseModel):
     cards: List[CardInput]
+    deck_name: Optional[str] = None
 
 
 class AudioConfigRequest(BaseModel):
@@ -114,6 +116,17 @@ def _map_card_to_vocabulary_item(card: CardInput) -> dict:
     }
 
 
+def _resolve_deck_name(deck_name: Optional[str]) -> str:
+    if deck_name is None:
+        return DEFAULT_DECK_NAME
+
+    normalized_deck_name = deck_name.strip()
+    if not normalized_deck_name:
+        return DEFAULT_DECK_NAME
+
+    return normalized_deck_name
+
+
 @app.get("/api/config")
 async def get_config() -> ConfigResponse:
     """Get current configuration (masks API key)"""
@@ -150,6 +163,7 @@ async def generate_cards(request: GenerateRequest):
         pipeline_result = run_generation_pipeline(
             vocabulary_items=vocabulary_items,
             runtime_audio_config=runtime_config.to_audio_config(),
+            deck_name=_resolve_deck_name(request.deck_name),
         )
 
         run_id = pipeline_result.results_dir.name
