@@ -1,196 +1,185 @@
-# Anki Vocabulary Card Generator
+# Japanese Anki Kards Generator
 
-A full-stack application for generating Anki vocabulary cards with Japanese text processing, furigana, and audio pronunciation files. Features a modern web UI built with Next.js and a Python backend.
+Build Japanese vocabulary decks for [Anki](https://apps.ankiweb.net/) in the browser. You edit cards in a Next.js UI, the Python backend handles furigana, optional ElevenLabs audio, and packaging—then you download a ready-to-import `.apkg` file.
 
-## Project Structure
+This repository is a **frontend + backend** app: a web client (`frontend/`) and a FastAPI service (`backend/`). Run both together for the full workflow.
+
+---
+
+## Is this for you?
+
+Use it if you want:
+
+- **One place to author cards** — readings, kanji with furigana, translations, example sentences, optional sentence images, and per-card audio counts.
+- **Live card preview** — see how the Anki note will look (front and back) before you generate.
+- **Deck export** — download an Anki package you can import on desktop or mobile Anki.
+- **Japanese tooling** — furigana and text processing on the server (MeCab / UniDic via fugashi).
+
+You will need an **ElevenLabs** API key if you want generated pronunciation audio (configurable in the UI and on the server).
+
+---
+
+## What it looks like
+
+### Web app
+
+<img width="1919" height="903" alt="image_2026-05-11_18-03-07" src="https://github.com/user-attachments/assets/36d21746-6086-43a0-9074-577d2562bf08" />
+
+### Anki card preview — front
+
+<img width="1919" height="1036" alt="image_2026-05-11_18-03-53" src="https://github.com/user-attachments/assets/88529bf0-69d0-4ea3-ac87-2d73d99d0d56" />
+
+### Anki card preview — back
+
+<img width="1919" height="1032" alt="image_2026-05-11_18-03-53 (2)" src="https://github.com/user-attachments/assets/d823e198-4f6a-4550-aee8-f5d1b730cc4f" />
+
+---
+
+## Highlights
+
+- Japanese text processing (furigana, kanji / kana handling) on the backend  
+- Optional TTS via ElevenLabs (multiple clips per card when you set `audio_count`)  
+- Direct **`.apkg`** export for Anki  
+- Dark-themed card creator with **front/back preview**  
+- Cards persisted in the browser (**localStorage**) while you work  
+- Audio and API defaults editable from the **settings** UI (gear) plus `backend/config.py` defaults  
+
+---
+
+## Development setup
+
+### Repository layout
 
 ```
-Anki-Kards-Info-Generator/
-├── api.py                  # FastAPI backend server
-├── Main.py                 # CLI entry point (alternative to UI)
-├── config.py               # Configuration constants
-├── input.json              # Input vocabulary data (for CLI mode)
-├── requirements.txt        # Python dependencies
-├── services/               # Backend service classes
-│   ├── __init__.py
-│   ├── japanese_text.py    # Japanese text processing (furigana, conversion)
-│   ├── audio_generator.py  # Audio generation using ElevenLabs API
-│   ├── vocabulary_processor.py # Vocabulary processing logic
-│   ├── anki_builder.py     # Anki package (.apkg) creation
-│   └── file_manager.py     # File I/O operations
-├── frontend/               # Next.js web UI
-│   ├── app/                # Next.js app router pages
-│   ├── components/         # React components
-│   ├── lib/                # Utility functions & API client
-│   └── package.json        # Frontend dependencies
-└── results/                # Generated output (created automatically)
+Japanese-Anki-Kards-Generator/
+├── backend/                 # FastAPI API + card pipeline
+│   ├── api.py               # HTTP server entrypoint
+│   ├── config.py            # Default ElevenLabs / note-type settings
+│   ├── requirements.txt
+│   ├── Main.py              # Optional CLI batch entry (input.json)
+│   ├── input.json           # Sample / CLI vocabulary input
+│   ├── services/            # Text, audio, Anki build, file I/O
+│   ├── templates/           # HTML templates for Anki card faces
+│   └── tests/
+├── frontend/                # Next.js app
+│   ├── app/
+│   ├── components/
+│   ├── lib/                 # API client, card helpers
+│   └── package.json
+├── start.bat / start.ps1    # Windows: install deps + run both servers
+├── package.json             # Root: `npm run dev` runs API + web together
+└── results/                 # Generated runs (created when you generate)
 ```
 
-## Installation
+### Backend
 
-### Backend Setup
+1. Install Python dependencies from the repo root:
 
-1. Install Python dependencies:
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
-2. **Required:** Download the UniDic dictionary (needed for Japanese text processing; run once per environment):
+2. **UniDic** — Japanese analysis needs the UniDic dictionary once per environment:
+
 ```bash
 python -m unidic download
 ```
-Without this, the app will fail with a MeCab/unidic error (e.g. "no such file or directory: ... unidic\\dicdir\\mecabrc"). Alternatively, use `fugashi[unidic-lite]` in `requirements.txt` for a self-contained install (no separate download).
 
-3. Configure your ElevenLabs API key in `config.py`:
-```python
-API_KEY = "your_elevenlabs_api_key_here"
-VOICE_ID = "your_voice_id_here"
-MODEL_ID = "eleven_multilingual_v2"
-```
+If MeCab cannot find UniDic (e.g. missing `mecabrc`), install the dictionary as above. The project uses `fugashi[unidic]` in `backend/requirements.txt`.
 
-### Frontend Setup
+3. Optional defaults in `backend/config.py` (ElevenLabs `API_KEY`, `VOICE_ID`, `MODEL_ID`, etc.). You can also set ElevenLabs credentials from the frontend settings when the API is running.
 
-1. Navigate to the frontend directory:
+### Frontend
+
+1. Install dependencies:
+
 ```bash
 cd frontend
-```
-
-2. Install Node.js dependencies:
-```bash
 pnpm install
-# or
-npm install
+# or: npm install
 ```
 
-3. Create `.env.local` file:
+2. Create `frontend/.env.local` if the API is not on the default host:
+
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-## Running the Application
+---
 
-### Option 1: Start scripts (recommended)
+## Running the app
 
-Use the start scripts to run **both** the backend and frontend. They install dependencies if needed, then open two windows (backend + frontend) and open the app in your browser.
+### Option A — Start scripts (Windows)
 
-- **Windows (Command Prompt):** double-click `start.bat` or run:
-  ```cmd
-  start.bat
-  ```
-- **Windows (PowerShell):**
-  ```powershell
-  .\start.ps1
-  ```
+Installs missing dependencies, starts backend and frontend, and opens the app in the browser.
 
-- Backend API: `http://localhost:8000`
-- Frontend UI: `http://localhost:3000`  
-- Close the two terminal windows to stop the servers.
+- **Command Prompt:** `start.bat`  
+- **PowerShell:** `.\start.ps1`
 
-### Option 2: Single terminal (npm)
+- API: `http://localhost:8000`  
+- UI: `http://localhost:3000`  
 
-From the project root, run both in one terminal (requires Node and Python in PATH):
+### Option B — One command from repo root
+
+Requires Python and Node on your `PATH`, and root dependencies installed once:
 
 ```bash
 npm install
 npm run dev
 ```
 
-### Option 3: Manual (separate terminals)
+This runs `python api.py` inside `backend/` and `npm run dev` inside `frontend/` via `concurrently`.
 
-1. Backend: `cd backend` then `python api.py` → `http://localhost:8000`
-2. Frontend: `cd frontend` then `npm run dev` → `http://localhost:3000`
+### Option C — Two terminals
 
-### Option 4: CLI Mode
+1. Backend: `cd backend` then `python api.py`  
+2. Frontend: `cd frontend` then `npm run dev` (or `pnpm dev`)
 
-1. Edit `input.json` with your vocabulary data:
-```json
-{
-  "vocabulary": [
-    {
-      "reading": "ゆうびんきょく",
-      "kanji": {
-        "kanji": "郵便局",
-        "furigana": "郵便[ゆうびん]局[きょく]"
-      },
-      "translation": "post office",
-      "sentence_kana": "郵便局に行きます",
-      "sentence_english": "I will go to the post office",
-      "audio_count": 2
-    },
-    {
-      "reading": "ビジネス",
-      "kanji": null,
-      "translation": "business",
-      "sentence_kana": "",
-      "sentence_english": "",
-      "audio_count": null
-    }
-  ]
-}
-```
+---
 
-2. Run the CLI application:
-```bash
-python Main.py
-```
+## API (backend)
 
-## Input JSON Format
+With `backend/api.py` running:
 
-The `input.json` file should contain:
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/config` | Current audio-related config (masked key state, voice, model, note type id) |
+| `POST` | `/api/config` | Update ElevenLabs `api_key`, `voice_id`, `model_id` |
+| `POST` | `/api/generate` | Build deck from JSON body (`cards[]`, optional `deck_name`) |
+| `GET` | `/api/download/{filename}` | Download a generated `.apkg` |
 
-- **vocabulary** (array, required): List of vocabulary items
-  - **reading** (string, required): Hiragana/katakana reading
-  - **kanji** (object or null): Kanji information
-    - **kanji** (string): The kanji characters
-    - **furigana** (string): Furigana format, e.g., `歴[れき]史[し]`
-  - **translation** (string, required): English translation
-  - **sentence_kana** (string, optional): Example sentence in Japanese
-  - **sentence_english** (string, optional): Example sentence translation
-  - **audio_count** (number or null): Number of audio files to generate (null = no audio)
+Generate request shape matches the frontend types in `frontend/lib/api.ts`: each card includes `reading`, optional `kanji` + `furigana`, `translation`, optional sentences, optional `sentence_image` (base64 data URL), `audio_count`, `generation_mode` (`both` | `jp_en` | `en_jp`), and optional `notes`.
+
+---
 
 ## Output
 
-The application generates a timestamped directory in `results/` containing:
+Successful runs write under `results/` (timestamped run folders) typically including:
 
-- `vocabulary_data.json` - Complete vocabulary data with metadata
-- `summary.txt` - Human-readable summary report
-- `vocabulary.apkg` - Anki package file ready for import
-- `Audio/` - Directory with generated audio files
+- `vocabulary.apkg` — import into Anki  
+- `vocabulary_data.json` — processed payload  
+- `summary.txt` — short run summary  
+- `Audio/` — generated audio files when `audio_count` is used  
 
-## API Endpoints
-
-When running the backend (`python api.py`):
-
-- `GET /api/health` - Health check
-- `GET /api/config` - Get current configuration
-- `POST /api/config` - Update audio configuration
-- `POST /api/generate` - Generate Anki cards
-- `GET /api/download/{filename}` - Download generated .apkg file
-
-## Features
-
-- 🎌 **Japanese Text Processing**: Automatic furigana generation, kanji/kana handling
-- 🔊 **Audio Generation**: ElevenLabs TTS with multiple voice variants
-- 📦 **Anki Package Export**: Direct .apkg file generation
-- 🎨 **Modern Web UI**: Beautiful dark-themed card creator interface
-- 📝 **Card Preview**: Live preview of front and back of cards
-- 💾 **Auto-save**: Cards saved to browser localStorage
-- ⚙️ **Configurable**: API settings manageable through UI
+---
 
 ## Configuration
 
-### Backend (config.py)
-- `API_KEY` - ElevenLabs API key
-- `VOICE_ID` - Voice ID for TTS
-- `MODEL_ID` - TTS model ID
-- `NOTE_TYPE_ID` - Anki note type ID (for matching existing note types)
+| Layer | What to set |
+|--------|----------------|
+| `backend/config.py` | Default `API_KEY`, `VOICE_ID`, `MODEL_ID`, `NOTE_TYPE_ID`, etc. |
+| Frontend | Settings modal (gear); `NEXT_PUBLIC_API_URL` in `.env.local` |
 
-### Frontend
-- Settings can be configured through the UI settings modal (gear icon)
-- Backend API URL configured via `NEXT_PUBLIC_API_URL` environment variable
+---
 
-## Tech Stack
+## Tech stack
 
-- **Backend**: Python, FastAPI, genanki, ElevenLabs API
-- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui
-- **Japanese Processing**: pykakasi, fugashi
+- **Backend:** Python, FastAPI, genanki, ElevenLabs, pykakasi, fugashi  
+- **Frontend:** Next.js, React, TypeScript, Tailwind CSS, shadcn/ui  
+
+---
+
+## Optional CLI batch
+
+For batch generation without the UI, you can use `backend/Main.py` with `backend/input.json`. The primary workflow supported by this README is the **web UI + API**.
