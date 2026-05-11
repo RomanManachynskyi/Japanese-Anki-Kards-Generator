@@ -14,3 +14,5 @@ export interface Card {
   notes: string
   createdAt: number
 }
+
+export type CardDraft = Omit<Card, "id" | "createdAt">
